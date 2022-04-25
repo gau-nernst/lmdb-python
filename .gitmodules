@@ -1,0 +1,4 @@
+[submodule "openldap"]
+	path = openldap
+	url = https://git.openldap.org/openldap/openldap
+	branch = mdb.master
