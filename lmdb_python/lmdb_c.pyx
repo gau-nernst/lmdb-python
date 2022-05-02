@@ -46,27 +46,37 @@ cdef class LmdbEnvironment:
             env_flags |= lmdb.MDB_RDONLY
         return lmdb.mdb_env_open(self.env, env_name.encode('utf-8'), env_flags, 0664)
 
-    def __dealloc__(self):
+    def close_env(self) -> None:
         lmdb.mdb_env_close(self.env)
+
+    # def __dealloc__(self):
+    #     lmdb.mdb_env_close(self.env)
 
 
 cdef class LmdbTransaction:
     cdef lmdb.MDB_txn* txn
+    env: LmdbEnvironment
 
     def begin_txn(self, env: LmdbEnvironment, read_only: bool = True) -> int:
+        self.env = env      # add internal reference so it won't be garbage-collected
         return lmdb.mdb_txn_begin(env.env, NULL, lmdb.MDB_RDONLY if read_only else 0, &self.txn)
     
     def commit_txn(self) -> int:
         return lmdb.mdb_txn_commit(self.txn)
 
-    def __dealloc__(self):
+    def abort_txn(self) -> None:
         lmdb.mdb_txn_abort(self.txn)
+    
+    # def __dealloc__(self):
+    #     lmdb.mdb_txn_abort(self.txn)
 
 
 cdef class LmdbDatabase:
     cdef lmdb.MDB_dbi dbi
+    txn: LmdbTransaction
 
     def open_dbi(self, txn: LmdbTransaction) -> int:
+        self.txn = txn
         return lmdb.mdb_dbi_open(txn.txn, NULL, 0, &self.dbi)
 
 
@@ -85,6 +95,7 @@ cdef class LmdbValue:
 
     def __repr__(self):
         return f"LmdbValue({self.to_bytes()})"
+
 
 def put(key: LmdbValue, value: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase) -> int:
     return lmdb.mdb_put(txn.txn, dbi.dbi, &key.data, &value.data, 0)
