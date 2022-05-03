@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict
 
 cimport lmdb_python.lmdb as lmdb
 
@@ -6,9 +6,6 @@ cimport lmdb_python.lmdb as lmdb
 MDB_VERSION_MAJOR = lmdb.MDB_VERSION_MAJOR
 MDB_VERSION_MINOR = lmdb.MDB_VERSION_MINOR
 MDB_VERSION_PATCH = lmdb.MDB_VERSION_PATCH
-
-EINVAL = lmdb.EINVAL
-ENOMEM = lmdb.ENOMEM
 
 MDB_KEYEXIST = lmdb.MDB_KEYEXIST
 MDB_NOTFOUND = lmdb.MDB_NOTFOUND
@@ -32,6 +29,10 @@ MDB_BAD_VALSIZE = lmdb.MDB_BAD_VALSIZE
 MDB_BAD_DBI = lmdb.MDB_BAD_DBI
 
 
+def strerror(err: int) -> str:
+    return lmdb.mdb_strerror(err).decode()
+
+
 cdef class LmdbEnvironment:
     cdef lmdb.MDB_env* env
 
@@ -44,7 +45,7 @@ cdef class LmdbEnvironment:
             env_flags |= lmdb.MDB_NOSUBDIR
         if read_only:
             env_flags |= lmdb.MDB_RDONLY
-        return lmdb.mdb_env_open(self.env, env_name.encode('utf-8'), env_flags, 0664)
+        return lmdb.mdb_env_open(self.env, env_name.encode("utf-8"), env_flags, 0664)
 
     def close_env(self) -> None:
         lmdb.mdb_env_close(self.env)
@@ -93,7 +94,7 @@ cdef class LmdbValue:
             return None
         return (<char*> self.data.mv_data)[:self.data.mv_size]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"LmdbValue({self.to_bytes()})"
 
 
@@ -107,3 +108,82 @@ def get(key: LmdbValue, value: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabas
 
 def delete(key: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase) -> int:
     return lmdb.mdb_del(txn.txn, dbi.dbi, &key.data, NULL)
+
+
+cdef class LmdbStat:
+    cdef lmdb.MDB_stat stat
+
+    @property
+    def ms_psize(self) -> int:
+        return self.stat.ms_psize
+
+    @property
+    def ms_depth(self) -> int:
+        return self.stat.ms_depth
+
+    @property
+    def ms_branch_pages(self) -> int:
+        return self.stat.ms_branch_pages
+
+    @property
+    def ms_leaf_pages(self) -> int:
+        return self.stat.ms_leaf_pages
+
+    @property
+    def ms_overflow_pages(self) -> int:
+        return self.stat.ms_overflow_pages
+
+    @property
+    def ms_entries(self) -> int:
+        return self.stat.ms_entries
+
+    def to_dict(self) -> Dict[str, int]:
+        return {
+            "ms_psize": self.ms_psize,
+            "ms_depth": self.ms_depth,
+            "ms_branch_pages": self.ms_branch_pages,
+            "ms_leaf_pages": self.ms_leaf_pages,
+            "ms_overflow_pages": self.ms_overflow_pages,
+            "ms_entries": self.ms_entries
+        }
+
+
+cdef class LmdbEnvInfo:
+    cdef lmdb.MDB_envinfo envinfo
+
+    @property
+    def me_mapsize(self) -> int: 
+        return self.envinfo.me_mapsize
+
+    @property
+    def me_last_pgno(self) -> int: 
+        return self.envinfo.me_last_pgno
+
+    @property
+    def me_last_txnid(self) -> int: 
+        return self.envinfo.me_last_txnid
+
+    @property
+    def me_maxreaders(self) -> int: 
+        return self.envinfo.me_maxreaders
+
+    @property
+    def me_numreaders(self) -> int: 
+        return self.envinfo.me_numreaders
+
+    def to_dict(self) -> Dict[str, int]:
+        return {
+            "me_mapsize": self.me_mapsize,
+            "me_last_pgno": self.me_last_pgno,
+            "me_last_txnid": self.me_last_txnid,
+            "me_maxreaders": self.me_maxreaders,
+            "me_numreaders": self.me_numreaders
+        }
+
+
+def env_stat(env: LmdbEnvironment, stat: LmdbStat) -> int:
+    return lmdb.mdb_env_stat(env.env, &stat.stat)
+
+
+def env_info(env: LmdbEnvironment, envinfo: LmdbEnvInfo) -> int:
+    return lmdb.mdb_env_info(env.env, &envinfo.envinfo)
