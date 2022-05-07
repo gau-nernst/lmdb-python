@@ -1,9 +1,39 @@
 import pathlib
 import pickle
-from typing import Any, Callable, Iterable, NewType, Tuple
+from typing import Any, Callable, Iterable, Tuple
 
 import pytest
-from lmdb_python import errors, lmdb_c
+from lmdb_python import lmdb_c
+
+
+lmdb_error_codes = [
+    lmdb_c.MDB_KEYEXIST,
+    lmdb_c.MDB_NOTFOUND,
+    lmdb_c.MDB_PAGE_NOTFOUND,
+    lmdb_c.MDB_CORRUPTED,
+    lmdb_c.MDB_PANIC,
+    lmdb_c.MDB_VERSION_MISMATCH,
+    lmdb_c.MDB_INVALID,
+    lmdb_c.MDB_MAP_FULL,
+    lmdb_c.MDB_DBS_FULL,
+    lmdb_c.MDB_READERS_FULL,
+    lmdb_c.MDB_TLS_FULL,
+    lmdb_c.MDB_TXN_FULL,
+    lmdb_c.MDB_CURSOR_FULL,
+    lmdb_c.MDB_PAGE_FULL,
+    lmdb_c.MDB_MAP_RESIZED,
+    lmdb_c.MDB_INCOMPATIBLE,
+    lmdb_c.MDB_BAD_RSLOT,
+    lmdb_c.MDB_BAD_TXN,
+    lmdb_c.MDB_BAD_VALSIZE,
+    lmdb_c.MDB_BAD_DBI,
+]
+
+
+@pytest.mark.parametrize("error_code", lmdb_error_codes)
+def test_error_code(error_code: int):
+    error_msg = lmdb_c.strerror(error_code)
+    assert isinstance(error_msg, str)
 
 
 def test_create_env():
@@ -107,12 +137,11 @@ def test_put(
     assert txn.commit_txn() == 0
 
 
-KeyValue = NewType("KeyValue", Tuple[bytes, bytes])
-
+_KeyValue = Tuple[bytes, bytes]
 
 @pytest.fixture
 def make_dbi_with_data(make_txn: Callable[[bool], lmdb_c.LmdbTransaction]):
-    def _make_dbi_with_data(data: Iterable[KeyValue]):
+    def _make_dbi_with_data(data: Iterable[_KeyValue]):
         txn = make_txn(False)
         dbi = lmdb_c.LmdbDatabase()
         dbi.open_dbi(txn)
@@ -131,7 +160,7 @@ def make_dbi_with_data(make_txn: Callable[[bool], lmdb_c.LmdbTransaction]):
 def test_get(
     key: bytes,
     value: bytes,
-    make_dbi_with_data: Callable[[Iterable[KeyValue]], lmdb_c.LmdbDatabase],
+    make_dbi_with_data: Callable[[Iterable[_KeyValue]], lmdb_c.LmdbDatabase],
     make_txn: Callable[[bool], lmdb_c.LmdbTransaction],
 ):
     dbi = make_dbi_with_data([(key, value)])
@@ -161,7 +190,7 @@ def test_get_notfound(
 def test_delete(
     key: bytes,
     value: bytes,
-    make_dbi_with_data: Callable[[Iterable[KeyValue]], lmdb_c.LmdbDatabase],
+    make_dbi_with_data: Callable[[Iterable[_KeyValue]], lmdb_c.LmdbDatabase],
     make_txn: Callable[[bool], lmdb_c.LmdbTransaction],
 ):
     dbi = make_dbi_with_data([(key, value)])
@@ -176,3 +205,27 @@ def test_delete(
 
     txn = make_txn(True)
     assert lmdb_c.get(c_key, c_value, txn, dbi) == lmdb_c.MDB_NOTFOUND
+
+
+def test_put_multithreading():
+    pass
+
+
+def test_put_multiprocessing():
+    pass
+
+
+def test_get_multithreading():
+    pass
+
+
+def test_get_multiprocessing():
+    pass
+
+
+def test_delete_multithreading():
+    pass
+
+
+def test_delete_multithreading():
+    pass
