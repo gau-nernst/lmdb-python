@@ -1,4 +1,4 @@
-from . import lmdb_c
+from lmdb_python import lmdb_c
 
 
 class LmdbException(Exception):

@@ -1,4 +1,4 @@
-from . import lmdb_c, errors
+from lmdb_python import lmdb_c, errors
 
 
 def get_lmdb_version() -> str:

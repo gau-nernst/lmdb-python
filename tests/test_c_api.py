@@ -139,6 +139,7 @@ def test_put(
 
 _KeyValue = Tuple[bytes, bytes]
 
+
 @pytest.fixture
 def make_dbi_with_data(make_txn: Callable[[bool], lmdb_c.LmdbTransaction]):
     def _make_dbi_with_data(data: Iterable[_KeyValue]):

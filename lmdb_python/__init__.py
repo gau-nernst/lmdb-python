@@ -1,1 +1,1 @@
-from .lmdb_python import get_lmdb_version
+from .core import get_lmdb_version
