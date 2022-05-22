@@ -35,7 +35,7 @@ jobs:
       - run: python -m cibuildwheel --output-dir wheelhouse
         env:
           CIBW_TEST_REQUIRES: pytest
-          CIBW_TEST_COMMAND: pytest -v
+          CIBW_TEST_COMMAND: pytest -v lmdb_python/tests
       - uses: actions/upload-artifact@v2
         with:
           path: ./wheelhouse/*.whl
