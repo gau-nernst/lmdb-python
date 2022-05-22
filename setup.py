@@ -19,6 +19,11 @@ extensions = [
 
 compiler_directives = {"language_level": 3, "embedsignature": True}
 
+extra_compile_args = []
+if os.name == "nt":
+    extra_compile_args.extend(["/link",  "/DEFAULTLIB:advapi32.lib"])
+    
+
 setup(
     name="lmdb-python",
     version="0.0.1",
@@ -26,4 +31,5 @@ setup(
     author="Thien Tran",
     url="https://github.com/gau-nernst/lmdb-python",
     ext_modules=cythonize(extensions, compiler_directives=compiler_directives),
+    extra_compile_args=extra_compile_args
 )
