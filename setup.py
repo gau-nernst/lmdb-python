@@ -5,9 +5,6 @@ from Cython.Build import cythonize
 
 lmdb_dir = "openldap/libraries/liblmdb"
 
-# extra_compile_args = []
-# if os.name == "nt":
-#     extra_compile_args.extend(["/link", "/DEFAULTLIB:advapi32.lib"])
 extra_link_args = []
 if os.name == "nt":
     extra_link_args.append("/DEFAULTLIB:advapi32.lib")
@@ -21,8 +18,7 @@ extensions = [
             os.path.join(lmdb_dir, "midl.c"),
         ],
         include_dirs=[lmdb_dir],
-        # extra_compile_args=extra_compile_args,
-        extra_link_args=extra_link_args
+        extra_link_args=extra_link_args,
     )
 ]
 
