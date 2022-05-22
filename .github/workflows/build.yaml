@@ -9,6 +9,9 @@ jobs:
     
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - uses: ls
       - uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python-version }}
