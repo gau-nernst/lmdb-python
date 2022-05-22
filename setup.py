@@ -7,7 +7,7 @@ lmdb_dir = "openldap/libraries/liblmdb"
 
 extra_compile_args = []
 if os.name == "nt":
-    extra_compile_args.extend(["/link", "/DEFAULTLIB:advapi32.lib"])
+    extra_compile_args.extend(["/link", "/DEFAULTLIB:Advapi32.lib"])
 
 extensions = [
     Extension(
