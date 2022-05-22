@@ -5,6 +5,10 @@ from Cython.Build import cythonize
 
 lmdb_dir = "openldap/libraries/liblmdb"
 
+extra_compile_args = []
+if os.name == "nt":
+    extra_compile_args.extend(["/link", "/DEFAULTLIB:advapi32.lib"])
+
 extensions = [
     Extension(
         "lmdb_python.lmdb_c",
@@ -14,15 +18,11 @@ extensions = [
             os.path.join(lmdb_dir, "midl.c"),
         ],
         include_dirs=[lmdb_dir],
+        extra_compile_args=extra_compile_args,
     )
 ]
 
 compiler_directives = {"language_level": 3, "embedsignature": True}
-
-extra_compile_args = []
-if os.name == "nt":
-    extra_compile_args.extend(["/link",  "/DEFAULTLIB:advapi32.lib"])
-    
 
 setup(
     name="lmdb-python",
@@ -31,5 +31,4 @@ setup(
     author="Thien Tran",
     url="https://github.com/gau-nernst/lmdb-python",
     ext_modules=cythonize(extensions, compiler_directives=compiler_directives),
-    extra_compile_args=extra_compile_args
 )
