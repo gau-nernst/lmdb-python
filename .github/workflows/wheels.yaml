@@ -18,8 +18,8 @@ jobs:
       # use clang in macos
       - if: matrix.os == 'macos-latest'
         run: |
-          export CC=/usr/bin/clang
-          export CXX=/usr/bin/clang++
+          echo "CC=/usr/bin/clang" >> $GITHUB_ENV
+          echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
 
       - run: python -m cibuildwheel --output-dir wheelhouse
         env:
