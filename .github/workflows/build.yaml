@@ -17,5 +17,12 @@ jobs:
       - run: |
           python -m pip install --upgrade pip setuptools wheel
           pip install Cython pytest
+
+      # use clang in macos
+      - if: matrix.os == macos-latest
+        run: |
+          export CC=/usr/bin/clang
+          export CXX=/usr/bin/clang++
+
       - run: python setup.py build_ext --inplace
       - run: python -m pytest -v
