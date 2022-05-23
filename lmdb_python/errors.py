@@ -1,4 +1,4 @@
-from lmdb_python import lmdb_c
+from ._cython import lmdb_c
 
 
 class LmdbException(Exception):

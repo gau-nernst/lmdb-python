@@ -1,6 +1,6 @@
 from typing import Optional, Dict
 
-cimport lmdb_python.lmdb as lmdb
+cimport lmdb_python._cython.lmdb as lmdb
 
 
 MDB_VERSION_MAJOR = lmdb.MDB_VERSION_MAJOR

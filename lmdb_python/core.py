@@ -1,4 +1,5 @@
-from lmdb_python import lmdb_c, errors
+from ._cython import lmdb_c
+from . import errors
 
 
 def get_lmdb_version() -> str:
