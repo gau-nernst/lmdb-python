@@ -35,7 +35,7 @@ jobs:
       - run: python -m cibuildwheel --output-dir wheelhouse
         env:
           CIBW_BUILD_VERBOSITY: 1
-          CIBW_SKIP: cp36-*
+          CIBW_SKIP: cp36-* pp*
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: pytest -v {project}/tests
       - uses: actions/upload-artifact@v2
