@@ -3,7 +3,7 @@ import pickle
 from typing import Any, Callable, Iterable, Tuple
 
 import pytest
-from lmdb_python import lmdb_c
+from lmdb_python._cython import lmdb_c
 
 
 lmdb_error_codes = [
@@ -138,6 +138,7 @@ def test_put(
 
 
 _KeyValue = Tuple[bytes, bytes]
+
 
 @pytest.fixture
 def make_dbi_with_data(make_txn: Callable[[bool], lmdb_c.LmdbTransaction]):
