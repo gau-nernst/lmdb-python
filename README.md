@@ -4,16 +4,31 @@
 
 Another Python bindings for LMDB.
 
-This repo serves as a practice for me to learn calling 3rd-party C/C++ libraries from Python using Cython.
+This repo serves as a practice for me to learn calling 3rd-party C/C++ libraries from Python using Cython. The compiled C extension is built and statically linked against the master branch of LMDB [here](https://git.openldap.org/openldap/openldap/tree/mdb.master).
 
 ## Installation
 
 Clone and install the repo directly
 
 ```bash
-git clone 
+git clone --recursive https://github.com/gau-nernst/lmdb-python
+cd lmdb-python
 pip install .
 ```
+
+If you want to build with a specific version of LMDB, checkout the corresponding tag in the `openldap` submodule before installing the package
+
+```bash
+# assume you are inside 'lmdb-python' directory now
+cd openldap
+git checkout LMDB_0.9.29
+cd ..
+pip install .
+```
+
+## Usage
+
+TBD
 
 ## Run tests
 
