@@ -33,55 +33,79 @@ def strerror(err: int) -> str:
     return lmdb.mdb_strerror(err).decode()
 
 
+class LmdbException(Exception):
+    def __init__(self, rc: int):
+        self.rc = rc
+        msg = f"{strerror(rc)}. Code {rc}"
+        super().__init__(msg)
+
+
+def _check_rc(rc: int) -> None:
+    if rc != 0:
+        raise LmdbException(rc)
+
+
 cdef class LmdbEnvironment:
     cdef lmdb.MDB_env* env
 
-    def create_env(self) -> int:
-        return lmdb.mdb_env_create(&self.env)
-    
-    def open_env(self, env_name: str, no_subdir: bool = False, read_only: bool = False) -> int:
+    def __cinit__(self, env_name: str, no_subdir: bool = False, read_only: bool = False):
+        rc = lmdb.mdb_env_create(&self.env)
+        _check_rc(rc)
+        
         env_flags = 0
         if no_subdir:
             env_flags |= lmdb.MDB_NOSUBDIR
         if read_only:
             env_flags |= lmdb.MDB_RDONLY
-        return lmdb.mdb_env_open(self.env, env_name.encode("utf-8"), env_flags, 0664)
+        
+        rc = lmdb.mdb_env_open(self.env, env_name.encode("utf-8"), env_flags, 0664)
+        _check_rc(rc)
 
-    def close_env(self) -> None:
-        lmdb.mdb_env_close(self.env)
+    # def create_env(self) -> None:
+    #     rc = lmdb.mdb_env_create(&self.env)
+    #     _check_rc(rc)
+    
+    # def open_env(self, env_name: str, no_subdir: bool = False, read_only: bool = False) -> None:
+    #     env_flags = 0
+    #     if no_subdir:
+    #         env_flags |= lmdb.MDB_NOSUBDIR
+    #     if read_only:
+    #         env_flags |= lmdb.MDB_RDONLY
+    #     rc = lmdb.mdb_env_open(self.env, env_name.encode("utf-8"), env_flags, 0664)
+    #     _check_rc(rc)
 
-    # def __dealloc__(self):
+    # def close_env(self) -> None:
     #     lmdb.mdb_env_close(self.env)
+
+    def __dealloc__(self):
+        lmdb.mdb_env_close(self.env)
 
 
 cdef class LmdbTransaction:
     cdef lmdb.MDB_txn* txn
     env: LmdbEnvironment
 
-    def begin_txn(self, env: LmdbEnvironment, read_only: bool = True) -> int:
+    def __cinit__(self, env: LmdbEnvironment, read_only: bool = True):
         self.env = env      # add internal reference so it won't be garbage-collected
-        return lmdb.mdb_txn_begin(env.env, NULL, lmdb.MDB_RDONLY if read_only else 0, &self.txn)
-    
-    def commit_txn(self) -> int:
-        return lmdb.mdb_txn_commit(self.txn)
+        rc = lmdb.mdb_txn_begin(env.env, NULL, lmdb.MDB_RDONLY if read_only else 0, &self.txn)
+        _check_rc(rc)
 
-    def abort_txn(self) -> None:
+    # def begin_txn(self, env: LmdbEnvironment, read_only: bool = True) -> int:
+    #     self.env = env      # add internal reference so it won't be garbage-collected
+    #     return lmdb.mdb_txn_begin(env.env, NULL, lmdb.MDB_RDONLY if read_only else 0, &self.txn)
+    
+    def commit(self) -> None:
+        rc = lmdb.mdb_txn_commit(self.txn)
+        _check_rc(rc)
+
+    def abort(self) -> None:
         lmdb.mdb_txn_abort(self.txn)
     
     # def __dealloc__(self):
     #     lmdb.mdb_txn_abort(self.txn)
 
 
-cdef class LmdbDatabase:
-    cdef lmdb.MDB_dbi dbi
-    txn: LmdbTransaction
-
-    def open_dbi(self, txn: LmdbTransaction) -> int:
-        self.txn = txn
-        return lmdb.mdb_dbi_open(txn.txn, NULL, 0, &self.dbi)
-
-
-cdef class LmdbValue:
+cdef class _LmdbData:
     cdef lmdb.MDB_val data
 
     def __cinit__(self, data: Optional[bytes] = None):
@@ -95,19 +119,56 @@ cdef class LmdbValue:
         return (<char*> self.data.mv_data)[:self.data.mv_size]
 
     def __repr__(self) -> str:
-        return f"LmdbValue({self.to_bytes()})"
+        return f"_LmdbValue({self.to_bytes()})"
 
 
-def put(key: LmdbValue, value: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase) -> int:
-    return lmdb.mdb_put(txn.txn, dbi.dbi, &key.data, &value.data, 0)
+cdef class LmdbDatabase:
+    cdef lmdb.MDB_dbi dbi
+
+    def __cinit__(self, txn: LmdbTransaction) -> int:
+        rc = lmdb.mdb_dbi_open(txn.txn, NULL, 0, &self.dbi)
+        _check_rc(rc)
+
+    def put(self, key: bytes, value: bytes, txn: LmdbTransaction) -> None:
+        _key = _LmdbData(key)
+        _value = _LmdbData(value)
+
+        rc = lmdb.mdb_put(txn.txn, self.dbi, &_key.data, &_value.data, 0)
+        _check_rc(rc)
+
+    def get(self, key: bytes, txn: LmdbTransaction) -> bytes:
+        _key = _LmdbData(key)
+        _value = _LmdbData()
+
+        rc = lmdb.mdb_get(txn.txn, self.dbi, &_key.data, &_value.data)
+        _check_rc(rc)
+
+        return _value.to_bytes()
+
+    def delete(self, key: bytes, txn: LmdbTransaction) -> None:
+        _key = _LmdbData(key)
+
+        rc = lmdb.mdb_del(txn.txn, self.dbi, &_key.data, NULL)
+        _check_rc(rc)
+
+    # def open_dbi(self, txn: LmdbTransaction) -> int:
+    #     self.txn = txn
+    #     return lmdb.mdb_dbi_open(txn.txn, NULL, 0, &self.dbi)
 
 
-def get(key: LmdbValue, value: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase) -> int:
-    return lmdb.mdb_get(txn.txn, dbi.dbi, &key.data, &value.data)
+# def put(key: LmdbValue, value: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase) -> None:
+#     rc = lmdb.mdb_put(txn.txn, dbi.dbi, &key.data, &value.data, 0)
+#     _check_rc(rc)
 
 
-def delete(key: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase) -> int:
-    return lmdb.mdb_del(txn.txn, dbi.dbi, &key.data, NULL)
+# def get(key: LmdbValue, value: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase) -> None:
+#     rc = lmdb.mdb_get(txn.txn, dbi.dbi, &key.data, &value.data)
+#     _check_rc(rc)
+
+
+# def delete(key: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase) -> None:
+#     rc = lmdb.mdb_del(txn.txn, dbi.dbi, &key.data, NULL)
+#     _check_rc(rc)
 
 
 cdef class LmdbStat:
