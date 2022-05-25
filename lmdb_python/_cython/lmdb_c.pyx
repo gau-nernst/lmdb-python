@@ -91,8 +91,8 @@ cdef class LmdbEnvironment:
     # def close_env(self) -> None:
     #     lmdb.mdb_env_close(self.env)
 
-    def __dealloc__(self):
-        lmdb.mdb_env_close(self.env)
+    # def __dealloc__(self):
+    #     lmdb.mdb_env_close(self.env)
 
 
 cdef class LmdbTransaction:
