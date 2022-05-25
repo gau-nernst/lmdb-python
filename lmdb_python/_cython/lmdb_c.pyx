@@ -1,4 +1,5 @@
 from typing import Optional, Dict
+from collections import namedtuple
 
 cimport lmdb_python._cython.lmdb as lmdb
 
@@ -61,6 +62,19 @@ cdef class LmdbEnvironment:
         rc = lmdb.mdb_env_open(self.env, env_name.encode("utf-8"), env_flags, 0664)
         _check_rc(rc)
 
+    def stat(self) -> int:
+        cdef lmdb.MDB_stat stat
+        rc = lmdb.mdb_env_stat(self.env, &stat)
+        _check_rc(rc)
+        return _LmdbStat(
+            stat.ms_psize,
+            stat.ms_depth,
+            stat.ms_branch_pages,
+            stat.ms_leaf_pages,
+            stat.ms_overflow_pages,
+            stat.ms_entries
+        )
+
     # def create_env(self) -> None:
     #     rc = lmdb.mdb_env_create(&self.env)
     #     _check_rc(rc)
@@ -89,10 +103,6 @@ cdef class LmdbTransaction:
         self.env = env      # add internal reference so it won't be garbage-collected
         rc = lmdb.mdb_txn_begin(env.env, NULL, lmdb.MDB_RDONLY if read_only else 0, &self.txn)
         _check_rc(rc)
-
-    # def begin_txn(self, env: LmdbEnvironment, read_only: bool = True) -> int:
-    #     self.env = env      # add internal reference so it won't be garbage-collected
-    #     return lmdb.mdb_txn_begin(env.env, NULL, lmdb.MDB_RDONLY if read_only else 0, &self.txn)
     
     def commit(self) -> None:
         rc = lmdb.mdb_txn_commit(self.txn)
@@ -151,25 +161,17 @@ cdef class LmdbDatabase:
         rc = lmdb.mdb_del(txn.txn, self.dbi, &_key.data, NULL)
         _check_rc(rc)
 
-    # def open_dbi(self, txn: LmdbTransaction) -> int:
-    #     self.txn = txn
-    #     return lmdb.mdb_dbi_open(txn.txn, NULL, 0, &self.dbi)
 
-
-# def put(key: LmdbValue, value: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase) -> None:
-#     rc = lmdb.mdb_put(txn.txn, dbi.dbi, &key.data, &value.data, 0)
-#     _check_rc(rc)
-
-
-# def get(key: LmdbValue, value: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase) -> None:
-#     rc = lmdb.mdb_get(txn.txn, dbi.dbi, &key.data, &value.data)
-#     _check_rc(rc)
-
-
-# def delete(key: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase) -> None:
-#     rc = lmdb.mdb_del(txn.txn, dbi.dbi, &key.data, NULL)
-#     _check_rc(rc)
-
+_LmdbStat = namedtuple(
+    "_LmdbStat", [
+        "ms_psize",
+        "ms_depth",
+        "ms_branch_pages",
+        "ms_leaf_pages",
+        "ms_overflow_pages",
+        "ms_entries"
+    ]
+)
 
 cdef class LmdbStat:
     cdef lmdb.MDB_stat stat
@@ -240,10 +242,6 @@ cdef class LmdbEnvInfo:
             "me_maxreaders": self.me_maxreaders,
             "me_numreaders": self.me_numreaders
         }
-
-
-def env_stat(env: LmdbEnvironment, stat: LmdbStat) -> int:
-    return lmdb.mdb_env_stat(env.env, &stat.stat)
 
 
 def env_info(env: LmdbEnvironment, envinfo: LmdbEnvInfo) -> int:
