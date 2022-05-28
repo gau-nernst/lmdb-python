@@ -1,8 +1,9 @@
-from typing import Optional, Dict
+import errno
+import os
 from collections import namedtuple
+from typing import Dict, Optional
 
 cimport lmdb_python._cython.lmdb as lmdb
-
 
 MDB_VERSION_MAJOR = lmdb.MDB_VERSION_MAJOR
 MDB_VERSION_MINOR = lmdb.MDB_VERSION_MINOR
@@ -65,6 +66,10 @@ class LmdbException(Exception):
 
 def _check_rc(rc: int) -> None:
     if rc:
+        if rc == errno.ENOMEM:
+            raise MemoryError()
+        if rc > 0:
+            raise OSError(rc, os.strerror(rc))
         raise LmdbException(rc)
 
 
@@ -90,7 +95,7 @@ cdef class LmdbEnvironment:
         rc = lmdb.mdb_env_create(&self.env)
         if rc:
             self.close()
-            raise LmdbException(rc)
+            _check_rc(rc)
         
         cdef unsigned int env_flags = 0
         if fixed_map:
@@ -121,7 +126,7 @@ cdef class LmdbEnvironment:
         rc = lmdb.mdb_env_open(self.env, env_name.encode(), env_flags, 0664)
         if rc:
             self.close()
-            raise LmdbException(rc)
+            _check_rc(rc)
 
     def copy(self):
         pass

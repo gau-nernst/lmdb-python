@@ -46,7 +46,7 @@ def test_env_init(tmp_path: pathlib.Path):
 
 def test_env_init_no_dir_exception(tmp_path: pathlib.Path):
     invalid_tmp_path = tmp_path / "invalid"
-    with pytest.raises(lmdb_c.LmdbException):
+    with pytest.raises(FileNotFoundError):
         lmdb_c.LmdbEnvironment(str(invalid_tmp_path))
 
 
