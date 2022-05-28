@@ -1,3 +1,4 @@
+import os
 import pathlib
 import pickle
 from typing import Any, Callable, Iterable, Tuple
@@ -40,42 +41,92 @@ def test_error_code(error_code: int):
 
 
 def test_env_init(tmp_path: pathlib.Path):
-    lmdb_c.LmdbEnvironment(str(tmp_path))
+    env = lmdb_c.LmdbEnvironment(str(tmp_path))
+    env.close()
 
 
-def test_env_init_no_dir(tmp_path: pathlib.Path):
+def test_env_init_no_dir_exception(tmp_path: pathlib.Path):
     invalid_tmp_path = tmp_path / "invalid"
     with pytest.raises(lmdb_c.LmdbException):
-        lmdb_c.LmdbEnvironment(str(invalid_tmp_path))
+        env = lmdb_c.LmdbEnvironment(str(invalid_tmp_path))
+        env.close()
 
 
-@pytest.mark.parametrize("no_subdir", (True, False))
-def test_env_init_no_subdir(tmp_path: pathlib.Path, no_subdir: bool):
-    env_path = str(tmp_path / "test_lmdb") if no_subdir else str(tmp_path)
-    lmdb_c.LmdbEnvironment(env_path, no_subdir=no_subdir)
+def test_env_init_subdir(tmp_path: pathlib.Path):
+    env = lmdb_c.LmdbEnvironment(str(tmp_path), no_subdir=False)
+    assert os.path.isfile(tmp_path / "data.mdb")
+    assert os.path.isfile(tmp_path / "lock.mdb")
+    env.close()
+
+
+def test_env_init_no_subdir(tmp_path: pathlib.Path):
+    env_path = str(tmp_path / "test_lmdb")
+    env = lmdb_c.LmdbEnvironment(env_path, no_subdir=True)
+    assert os.path.isfile(env_path)
+    assert os.path.isfile(env_path + "-lock")
+    env.close()
 
 
 @pytest.mark.parametrize("no_subdir", (True, False))
 @pytest.mark.parametrize("read_only", (True, False))
 def test_env_init_read_only(tmp_path: pathlib.Path, no_subdir: bool, read_only: bool):
+    # for read-only env, an DB must exist first
+    # create a db
     env_path = str(tmp_path / "test_lmdb") if no_subdir else str(tmp_path)
-    lmdb_c.LmdbEnvironment(env_path, no_subdir=no_subdir)
-    lmdb_c.LmdbEnvironment(env_path, no_subdir=no_subdir, read_only=read_only)
+    env = lmdb_c.LmdbEnvironment(env_path, no_subdir=no_subdir)
+    env.close()
+
+    # TODO: test for read_only
+    env = lmdb_c.LmdbEnvironment(env_path, no_subdir=no_subdir, read_only=read_only)
+    env.close()
 
 
 @pytest.fixture
 def lmdb_env(tmp_path: pathlib.Path):
-    return lmdb_c.LmdbEnvironment(str(tmp_path))
+    env = lmdb_c.LmdbEnvironment(str(tmp_path))
+    yield env
+    env.close()
+
+
+def test_env_get_stat(lmdb_env: lmdb_c.LmdbEnvironment):
+    stats = lmdb_env.get_stat()
+    for stat_name in [
+        "ms_psize",
+        "ms_depth",
+        "ms_branch_pages",
+        "ms_leaf_pages",
+        "ms_overflow_pages",
+        "ms_entries"
+    ]:
+        assert hasattr(stats, stat_name)
+        current_stat = getattr(stats, stat_name)
+        assert isinstance(current_stat, int)
+
+
+def test_env_get_info(lmdb_env: lmdb_c.LmdbEnvironment):
+    info = lmdb_env.get_info()
+    for info_name in [
+        "me_mapsize",
+        "me_last_pgno",
+        "me_last_txnid",
+        "me_maxreaders",
+        "me_numreaders",
+    ]:
+        assert hasattr(info, info_name)
+        current_info = getattr(info, info_name)
+        assert isinstance(current_info, int)
 
 
 def test_txn_init(lmdb_env: lmdb_c.LmdbEnvironment):
-    lmdb_c.LmdbTransaction(lmdb_env)
+    txn = lmdb_c.LmdbTransaction(lmdb_env)
+    txn.abort()
 
 
 @pytest.mark.parametrize("read_only", (True, False))
 def test_txn_init_read_only(lmdb_env: lmdb_c.LmdbEnvironment, read_only: bool):
-    txn = lmdb_c.LmdbTransaction(lmdb_env, read_only=read_only)
     # TODO: check read_only state
+    txn = lmdb_c.LmdbTransaction(lmdb_env, read_only=read_only)
+    txn.abort()
 
 
 @pytest.fixture
@@ -89,6 +140,7 @@ def make_txn(lmdb_env: lmdb_c.LmdbEnvironment):
 def test_dbi(make_txn: _MakeTxn):
     txn = make_txn(read_only=True)
     lmdb_c.LmdbDatabase(txn)
+    txn.abort()
 
 
 def test_data_empty():
@@ -146,6 +198,7 @@ def test_get(
     dbi = make_dbi_with_data([(key, value)])
     txn = make_txn(read_only=True)
     assert dbi.get(key, txn) == value
+    txn.abort()
 
 
 @pytest.mark.parametrize("key", _key_samples)
@@ -155,6 +208,7 @@ def test_get_notfound(key: bytes, make_txn: _MakeTxn):
     with pytest.raises(lmdb_c.LmdbException) as e:
         dbi.get(key, txn)
     assert e.value.rc == lmdb_c.MDB_NOTFOUND
+    txn.abort()
 
 
 @pytest.mark.parametrize("key,value", _key_value_samples)
@@ -171,6 +225,7 @@ def test_delete(
     with pytest.raises(lmdb_c.LmdbException) as e:
         dbi.get(key, txn)
     assert e.value.rc == lmdb_c.MDB_NOTFOUND
+    txn.abort()
 
 
 def test_put_multithreading():

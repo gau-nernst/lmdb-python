@@ -62,7 +62,7 @@ cdef class LmdbEnvironment:
         rc = lmdb.mdb_env_open(self.env, env_name.encode("utf-8"), env_flags, 0664)
         _check_rc(rc)
 
-    def stat(self) -> int:
+    def get_stat(self) -> _LmdbStat:
         cdef lmdb.MDB_stat stat
         rc = lmdb.mdb_env_stat(self.env, &stat)
         _check_rc(rc)
@@ -72,24 +72,23 @@ cdef class LmdbEnvironment:
             stat.ms_branch_pages,
             stat.ms_leaf_pages,
             stat.ms_overflow_pages,
-            stat.ms_entries
+            stat.ms_entries,
         )
 
-    # def create_env(self) -> None:
-    #     rc = lmdb.mdb_env_create(&self.env)
-    #     _check_rc(rc)
-    
-    # def open_env(self, env_name: str, no_subdir: bool = False, read_only: bool = False) -> None:
-    #     env_flags = 0
-    #     if no_subdir:
-    #         env_flags |= lmdb.MDB_NOSUBDIR
-    #     if read_only:
-    #         env_flags |= lmdb.MDB_RDONLY
-    #     rc = lmdb.mdb_env_open(self.env, env_name.encode("utf-8"), env_flags, 0664)
-    #     _check_rc(rc)
+    def get_info(self) -> _LmdbEnvInfo:
+        cdef lmdb.MDB_envinfo envinfo
+        rc = lmdb.mdb_env_info(self.env, &envinfo)
+        _check_rc(rc)
+        return _LmdbEnvInfo(
+            envinfo.me_mapsize,
+            envinfo.me_last_pgno,
+            envinfo.me_last_txnid,
+            envinfo.me_maxreaders,
+            envinfo.me_numreaders,
+        )
 
-    # def close_env(self) -> None:
-    #     lmdb.mdb_env_close(self.env)
+    def close(self) -> None:
+        lmdb.mdb_env_close(self.env)
 
     # def __dealloc__(self):
     #     lmdb.mdb_env_close(self.env)
@@ -97,10 +96,8 @@ cdef class LmdbEnvironment:
 
 cdef class LmdbTransaction:
     cdef lmdb.MDB_txn* txn
-    env: LmdbEnvironment
 
     def __cinit__(self, env: LmdbEnvironment, read_only: bool = True):
-        self.env = env      # add internal reference so it won't be garbage-collected
         rc = lmdb.mdb_txn_begin(env.env, NULL, lmdb.MDB_RDONLY if read_only else 0, &self.txn)
         _check_rc(rc)
     
@@ -169,80 +166,17 @@ _LmdbStat = namedtuple(
         "ms_branch_pages",
         "ms_leaf_pages",
         "ms_overflow_pages",
-        "ms_entries"
+        "ms_entries",
     ]
 )
 
-cdef class LmdbStat:
-    cdef lmdb.MDB_stat stat
 
-    @property
-    def ms_psize(self) -> int:
-        return self.stat.ms_psize
-
-    @property
-    def ms_depth(self) -> int:
-        return self.stat.ms_depth
-
-    @property
-    def ms_branch_pages(self) -> int:
-        return self.stat.ms_branch_pages
-
-    @property
-    def ms_leaf_pages(self) -> int:
-        return self.stat.ms_leaf_pages
-
-    @property
-    def ms_overflow_pages(self) -> int:
-        return self.stat.ms_overflow_pages
-
-    @property
-    def ms_entries(self) -> int:
-        return self.stat.ms_entries
-
-    def to_dict(self) -> Dict[str, int]:
-        return {
-            "ms_psize": self.ms_psize,
-            "ms_depth": self.ms_depth,
-            "ms_branch_pages": self.ms_branch_pages,
-            "ms_leaf_pages": self.ms_leaf_pages,
-            "ms_overflow_pages": self.ms_overflow_pages,
-            "ms_entries": self.ms_entries
-        }
-
-
-cdef class LmdbEnvInfo:
-    cdef lmdb.MDB_envinfo envinfo
-
-    @property
-    def me_mapsize(self) -> int: 
-        return self.envinfo.me_mapsize
-
-    @property
-    def me_last_pgno(self) -> int: 
-        return self.envinfo.me_last_pgno
-
-    @property
-    def me_last_txnid(self) -> int: 
-        return self.envinfo.me_last_txnid
-
-    @property
-    def me_maxreaders(self) -> int: 
-        return self.envinfo.me_maxreaders
-
-    @property
-    def me_numreaders(self) -> int: 
-        return self.envinfo.me_numreaders
-
-    def to_dict(self) -> Dict[str, int]:
-        return {
-            "me_mapsize": self.me_mapsize,
-            "me_last_pgno": self.me_last_pgno,
-            "me_last_txnid": self.me_last_txnid,
-            "me_maxreaders": self.me_maxreaders,
-            "me_numreaders": self.me_numreaders
-        }
-
-
-def env_info(env: LmdbEnvironment, envinfo: LmdbEnvInfo) -> int:
-    return lmdb.mdb_env_info(env.env, &envinfo.envinfo)
+_LmdbEnvInfo = namedtuple(
+    "_LmdbEnvInfo", [
+        "me_mapsize",
+        "me_last_pgno",
+        "me_last_txnid",
+        "me_maxreaders",
+        "me_numreaders",
+    ]
+)
