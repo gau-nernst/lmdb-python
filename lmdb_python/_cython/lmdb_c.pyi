@@ -26,7 +26,7 @@ MDB_BAD_TXN: int
 MDB_BAD_VALSIZE: int
 MDB_BAD_DBI: int
 
-_LmdbEnvStat = namedtuple(
+_LmdbStat = namedtuple(
     "_LmdbStat",
     [
         "ms_psize",
@@ -58,7 +58,7 @@ class LmdbEnvironment:
     def __init__(
         self, env_name: str, no_subdir: bool = False, read_only: bool = False
     ): ...
-    def get_stat(self) -> _LmdbEnvStat: ...
+    def get_stat(self) -> _LmdbStat: ...
     def get_info(self) -> _LmdbEnvInfo: ...
     def close(self) -> None: ...
 

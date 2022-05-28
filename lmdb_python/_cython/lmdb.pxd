@@ -34,6 +34,7 @@ cdef extern from "lmdb.h":
     cdef int MDB_NOLOCK
     cdef int MDB_NORDAHEAD
     cdef int MDB_NOMEMINIT
+    cdef int MDB_PREVSNAPSHOT
     
     # mdb_dbi_open Database Flags
     cdef int MDB_REVERSEKEY
@@ -61,6 +62,8 @@ cdef extern from "lmdb.h":
         pass
     
     # Return Codes
+    cdef int ENOMEM
+
     cdef int MDB_SUCCESS
     cdef int MDB_KEYEXIST
     cdef int MDB_NOTFOUND

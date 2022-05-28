@@ -41,30 +41,26 @@ def test_error_code(error_code: int):
 
 
 def test_env_init(tmp_path: pathlib.Path):
-    env = lmdb_c.LmdbEnvironment(str(tmp_path))
-    env.close()
+    lmdb_c.LmdbEnvironment(str(tmp_path))
 
 
 def test_env_init_no_dir_exception(tmp_path: pathlib.Path):
     invalid_tmp_path = tmp_path / "invalid"
     with pytest.raises(lmdb_c.LmdbException):
-        env = lmdb_c.LmdbEnvironment(str(invalid_tmp_path))
-        env.close()
+        lmdb_c.LmdbEnvironment(str(invalid_tmp_path))
 
 
 def test_env_init_subdir(tmp_path: pathlib.Path):
-    env = lmdb_c.LmdbEnvironment(str(tmp_path), no_subdir=False)
+    lmdb_c.LmdbEnvironment(str(tmp_path), no_subdir=False)
     assert os.path.isfile(tmp_path / "data.mdb")
     assert os.path.isfile(tmp_path / "lock.mdb")
-    env.close()
 
 
 def test_env_init_no_subdir(tmp_path: pathlib.Path):
     env_path = str(tmp_path / "test_lmdb")
-    env = lmdb_c.LmdbEnvironment(env_path, no_subdir=True)
+    lmdb_c.LmdbEnvironment(env_path, no_subdir=True)
     assert os.path.isfile(env_path)
     assert os.path.isfile(env_path + "-lock")
-    env.close()
 
 
 @pytest.mark.parametrize("no_subdir", (True, False))
@@ -73,19 +69,14 @@ def test_env_init_read_only(tmp_path: pathlib.Path, no_subdir: bool, read_only: 
     # for read-only env, an DB must exist first
     # create a db
     env_path = str(tmp_path / "test_lmdb") if no_subdir else str(tmp_path)
-    env = lmdb_c.LmdbEnvironment(env_path, no_subdir=no_subdir)
-    env.close()
-
+    lmdb_c.LmdbEnvironment(env_path, no_subdir=no_subdir)
+    lmdb_c.LmdbEnvironment(env_path, no_subdir=no_subdir, read_only=read_only)
     # TODO: test for read_only
-    env = lmdb_c.LmdbEnvironment(env_path, no_subdir=no_subdir, read_only=read_only)
-    env.close()
 
 
 @pytest.fixture
 def lmdb_env(tmp_path: pathlib.Path):
-    env = lmdb_c.LmdbEnvironment(str(tmp_path))
-    yield env
-    env.close()
+    return lmdb_c.LmdbEnvironment(str(tmp_path))
 
 
 def test_env_get_stat(lmdb_env: lmdb_c.LmdbEnvironment):

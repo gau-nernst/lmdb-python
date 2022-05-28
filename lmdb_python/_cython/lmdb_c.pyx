@@ -29,7 +29,7 @@ MDB_BAD_TXN = lmdb.MDB_BAD_TXN
 MDB_BAD_VALSIZE = lmdb.MDB_BAD_VALSIZE
 MDB_BAD_DBI = lmdb.MDB_BAD_DBI
 
-_LmdbEnvStat = namedtuple(
+_LmdbStat = namedtuple(
     "_LmdbEnvStat", [
         "ms_psize",
         "ms_depth",
@@ -49,6 +49,9 @@ _LmdbEnvInfo = namedtuple(
     ]
 )
 
+def version() -> str:
+    return lmdb.mdb_version(NULL, NULL, NULL).decode()
+
 def strerror(err: int) -> str:
     return lmdb.mdb_strerror(err).decode()
 
@@ -61,30 +64,80 @@ class LmdbException(Exception):
 
 
 def _check_rc(rc: int) -> None:
-    if rc != 0:
+    if rc:
         raise LmdbException(rc)
+
 
 cdef class LmdbEnvironment:
     cdef lmdb.MDB_env* env
 
-    def __cinit__(self, env_name: str, no_subdir: bool = False, read_only: bool = False):
+    def __cinit__(
+        self,
+        env_name: str,
+        fixed_map: bool = False,
+        no_subdir: bool = False,
+        read_only: bool = False,
+        write_map: bool = False,
+        no_meta_sync: bool = False,
+        no_sync: bool = False,
+        map_async: bool = False,
+        no_tls: bool = False,
+        no_lock: bool = False,
+        no_readahead: bool = False,
+        no_meminit: bool = False,
+        prev_snapshot: bool = False,
+    ):
         rc = lmdb.mdb_env_create(&self.env)
-        _check_rc(rc)
+        if rc:
+            self.close()
+            raise LmdbException(rc)
         
-        env_flags = 0
+        cdef unsigned int env_flags = 0
+        if fixed_map:
+            env_flags |= lmdb.MDB_FIXEDMAP
         if no_subdir:
             env_flags |= lmdb.MDB_NOSUBDIR
         if read_only:
             env_flags |= lmdb.MDB_RDONLY
-        
-        rc = lmdb.mdb_env_open(self.env, env_name.encode("utf-8"), env_flags, 0664)
-        _check_rc(rc)
+        if write_map:
+            env_flags |= lmdb.MDB_WRITEMAP
+        if no_meta_sync:
+            env_flags |= lmdb.MDB_NOMETASYNC
+        if no_sync:
+            env_flags |= lmdb.MDB_NOSYNC
+        if map_async:
+            env_flags |= lmdb.MDB_MAPASYNC
+        if no_tls:
+            env_flags |= lmdb.MDB_NOTLS
+        if no_lock:
+            env_flags |= lmdb.MDB_NOLOCK
+        if no_readahead:
+            env_flags |= lmdb.MDB_NORDAHEAD
+        if no_meminit:
+            env_flags |= lmdb.MDB_NOMEMINIT
+        if prev_snapshot:
+            env_flags |= lmdb.MDB_PREVSNAPSHOT
 
-    def get_stat(self) -> _LmdbEnvStat:
+        rc = lmdb.mdb_env_open(self.env, env_name.encode(), env_flags, 0664)
+        if rc:
+            self.close()
+            raise LmdbException(rc)
+
+    def copy(self):
+        pass
+
+    def copy_fd(self):
+        pass
+
+
+    def get_stat(self) -> _LmdbStat:
+        if self.env is NULL:
+            return _LmdbStat(0, 0, 0, 0, 0, 0)
+
         cdef lmdb.MDB_stat stat
         rc = lmdb.mdb_env_stat(self.env, &stat)
         _check_rc(rc)
-        return _LmdbEnvStat(
+        return _LmdbStat(
             stat.ms_psize,
             stat.ms_depth,
             stat.ms_branch_pages,
@@ -94,6 +147,9 @@ cdef class LmdbEnvironment:
         )
 
     def get_info(self) -> _LmdbEnvInfo:
+        if self.env is NULL:
+            return _LmdbEnvInfo(0, 0, 0, 0, 0)
+
         cdef lmdb.MDB_envinfo envinfo
         rc = lmdb.mdb_env_info(self.env, &envinfo)
         _check_rc(rc)
@@ -105,11 +161,48 @@ cdef class LmdbEnvironment:
             envinfo.me_numreaders,
         )
 
-    def close(self) -> None:
-        lmdb.mdb_env_close(self.env)
+    def sync(self):
+        pass
 
-    # def __dealloc__(self):
-    #     lmdb.mdb_env_close(self.env)
+    def close(self) -> None:
+        if self.env is not NULL:
+            lmdb.mdb_env_close(self.env)
+            self.env = NULL
+
+    def set_flags(self):
+        pass
+
+    def get_flags(self):
+        pass
+
+    def get_path(self):
+        pass
+    
+    def get_fd(self):
+        pass
+
+    def set_map_size(self):
+        pass
+
+    def set_max_readers(self):
+        pass
+
+    def set_max_dbs(self):
+        pass
+
+    def get_max_key_size(self):
+        pass
+
+    def set_user_ctx(self):
+        pass
+
+    def get_user_ctx(self):
+        pass
+
+    def __dealloc__(self):
+        if self.env is not NULL:
+            lmdb.mdb_env_close(self.env)
+            self.env = NULL
 
 
 cdef class LmdbTransaction:
@@ -118,16 +211,35 @@ cdef class LmdbTransaction:
     def __cinit__(self, env: LmdbEnvironment, read_only: bool = True):
         rc = lmdb.mdb_txn_begin(env.env, NULL, lmdb.MDB_RDONLY if read_only else 0, &self.txn)
         _check_rc(rc)
-    
+
+    def get_id(self) -> int:
+        if self.txn is not NULL:
+            return lmdb.mdb_txn_id(self.txn)
+        return 0
+
     def commit(self) -> None:
-        rc = lmdb.mdb_txn_commit(self.txn)
-        _check_rc(rc)
+        if self.txn is not NULL:
+            rc = lmdb.mdb_txn_commit(self.txn)
+            self.txn = NULL
+            _check_rc(rc)
 
     def abort(self) -> None:
-        lmdb.mdb_txn_abort(self.txn)
-    
-    # def __dealloc__(self):
-    #     lmdb.mdb_txn_abort(self.txn)
+        if self.txn is not NULL:
+            lmdb.mdb_txn_abort(self.txn)
+            self.txn = NULL
+
+    def reset(self) -> None:
+        if self.txn is not NULL:
+            lmdb.mdb_txn_reset(self.txn)
+
+    def renew(self) -> None:
+        if self.txn is not NULL:
+            lmdb.mdb_txn_renew(self.txn)
+
+    def __dealloc__(self):
+        if self.txn is not NULL:
+            lmdb.mdb_txn_abort(self.txn)
+            self.txn = NULL
 
 
 cdef class _LmdbData:
@@ -152,6 +264,32 @@ cdef class LmdbDatabase:
 
     def __cinit__(self, txn: LmdbTransaction) -> int:
         rc = lmdb.mdb_dbi_open(txn.txn, NULL, 0, &self.dbi)
+        _check_rc(rc)
+
+    def get_stat(self, txn: LmdbTransaction) -> _LmdbStat:
+        cdef lmdb.MDB_stat stat
+        rc = lmdb.mdb_stat(txn.txn, self.dbi, &stat)
+        _check_rc(rc)
+        return _LmdbStat(
+            stat.ms_psize,
+            stat.ms_depth,
+            stat.ms_branch_pages,
+            stat.ms_leaf_pages,
+            stat.ms_overflow_pages,
+            stat.ms_entries,
+        )
+
+    def get_flags(self, txn: LmdbTransaction) -> int:
+        cdef unsigned int flags
+        rc = lmdb.mdb_dbi_flags(txn.txn, self.dbi, &flags)
+        return flags
+
+    def empty_db(self, txn: LmdbTransaction) -> None:
+        rc = lmdb.mdb_drop(txn.txn, self.dbi, 0)
+        _check_rc(rc)
+    
+    def delete_db(self, txn: LmdbTransaction) -> None:
+        rc = lmdb.mdb_drop(txn.txn, self.dbi, 1)
         _check_rc(rc)
 
     def put(self, key: bytes, value: bytes, txn: LmdbTransaction) -> None:
