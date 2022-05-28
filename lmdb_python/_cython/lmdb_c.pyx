@@ -93,7 +93,6 @@ cdef class LmdbEnvironment:
         no_lock: bool = False,
         no_readahead: bool = False,
         no_meminit: bool = False,
-        prev_snapshot: bool = False,
     ):
         rc = lmdb.mdb_env_create(&self.env)
         if rc:
@@ -123,8 +122,6 @@ cdef class LmdbEnvironment:
             env_flags |= lmdb.MDB_NORDAHEAD
         if no_meminit:
             env_flags |= lmdb.MDB_NOMEMINIT
-        if prev_snapshot:
-            env_flags |= lmdb.MDB_PREVSNAPSHOT
 
         rc = lmdb.mdb_env_open(self.env, env_name.encode(), env_flags, 0664)
         if rc:
