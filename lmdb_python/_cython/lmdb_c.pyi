@@ -1,4 +1,5 @@
-from typing import Dict, Optional
+from collections import namedtuple
+from typing import Optional
 
 MDB_VERSION_MAJOR: int
 MDB_VERSION_MINOR: int
@@ -25,17 +26,41 @@ MDB_BAD_TXN: int
 MDB_BAD_VALSIZE: int
 MDB_BAD_DBI: int
 
-def strerror(err: int) -> str: ...
+_LmdbStat = namedtuple(
+    "_LmdbStat",
+    [
+        "ms_psize",
+        "ms_depth",
+        "ms_branch_pages",
+        "ms_leaf_pages",
+        "ms_overflow_pages",
+        "ms_entries",
+    ],
+)
 
+_LmdbEnvInfo = namedtuple(
+    "_LmdbEnvInfo",
+    [
+        "me_mapsize",
+        "me_last_pgno",
+        "me_last_txnid",
+        "me_maxreaders",
+        "me_numreaders",
+    ],
+)
+
+def strerror(err: int) -> str: ...
 
 class LmdbException(Exception):
     rc: int
-
 
 class LmdbEnvironment:
     def __init__(
         self, env_name: str, no_subdir: bool = False, read_only: bool = False
     ): ...
+    def get_stat(self) -> _LmdbStat: ...
+    def get_info(self) -> _LmdbEnvInfo: ...
+    def close(self) -> None: ...
 
 class LmdbTransaction:
     def __init__(self, env: LmdbEnvironment, read_only: bool = True): ...
@@ -51,35 +76,3 @@ class LmdbDatabase:
     def put(self, key: bytes, value: bytes, txn: LmdbTransaction) -> None: ...
     def get(self, key: bytes, txn: LmdbTransaction) -> bytes: ...
     def delete(self, key: bytes, txn: LmdbTransaction) -> None: ...
-
-
-class LmdbStat:
-    @property
-    def ms_psize(self) -> int: ...
-    @property
-    def ms_depth(self) -> int: ...
-    @property
-    def ms_branch_pages(self) -> int: ...
-    @property
-    def ms_leaf_pages(self) -> int: ...
-    @property
-    def ms_overflow_pages(self) -> int: ...
-    @property
-    def ms_entries(self) -> int: ...
-    def to_dict(self) -> Dict[str, int]: ...
-
-class LmdbEnvInfo:
-    @property
-    def me_mapsize(self) -> int: ...
-    @property
-    def me_last_pgno(self) -> int: ...
-    @property
-    def me_last_txnid(self) -> int: ...
-    @property
-    def me_maxreaders(self) -> int: ...
-    @property
-    def me_numreaders(self) -> int: ...
-    def to_dict(self) -> Dict[str, int]: ...
-
-def env_stat(env: LmdbEnvironment, stat: LmdbStat) -> int: ...
-def env_info(env: LmdbEnvironment, envinfo: LmdbEnvInfo) -> int: ...
