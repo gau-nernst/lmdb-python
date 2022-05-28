@@ -50,12 +50,83 @@ _LmdbEnvInfo = namedtuple(
         "me_numreaders",
     ]
 )
+_LmdbEnvFlags = namedtuple(
+    "_LmdbEnvFlags", [
+        "fixed_map",
+        "no_subdir",
+        "read_only",
+        "write_map",
+        "no_meta_sync",
+        "no_sync",
+        "map_async",
+        "no_tls",
+        "no_lock",
+        "no_readahead",
+        "no_meminit",
+    ]
+)
+_LmdbDbFlags = namedtuple(
+    "_LmdbDbFlags", [
+        "reverse_key",
+        "duplicate_sort",
+        "integer_key",
+        "duplicate_fixed",
+        "integer_duplicate",
+        "reverse_duplicate",
+        "creat",
+    ]
+)
+
 
 def version() -> str:
     return lmdb.mdb_version(NULL, NULL, NULL).decode()
 
+
 def strerror(err: int) -> str:
     return lmdb.mdb_strerror(err).decode()
+
+
+def _env_flags_to_int(
+    fixed_map: bool = False,
+    no_subdir: bool = False,
+    read_only: bool = False,
+    write_map: bool = False,
+    no_meta_sync: bool = False,
+    no_sync: bool = False,
+    map_async: bool = False,
+    no_tls: bool = False,
+    no_lock: bool = False,
+    no_readahead: bool = False,
+    no_meminit: bool = False,
+) -> int:
+    cdef unsigned int flags = 0
+    if fixed_map:
+        flags |= lmdb.MDB_FIXEDMAP
+    if no_subdir:
+        flags |= lmdb.MDB_NOSUBDIR
+    if read_only:
+        flags |= lmdb.MDB_RDONLY
+    if write_map:
+        flags |= lmdb.MDB_WRITEMAP
+    if no_meta_sync:
+        flags |= lmdb.MDB_NOMETASYNC
+    if no_sync:
+        flags |= lmdb.MDB_NOSYNC
+    if map_async:
+        flags |= lmdb.MDB_MAPASYNC
+    if no_tls:
+        flags |= lmdb.MDB_NOTLS
+    if no_lock:
+        flags |= lmdb.MDB_NOLOCK
+    if no_readahead:
+        flags |= lmdb.MDB_NORDAHEAD
+    if no_meminit:
+        flags |= lmdb.MDB_NOMEMINIT
+    return flags
+
+
+def _flag_is_set(unsigned int flags, unsigned int flag) -> bool:
+    return (flags & flag) == flag
 
 
 class LmdbException(Exception):
@@ -81,7 +152,7 @@ cdef class LmdbEnvironment:
 
     def __cinit__(
         self,
-        env_name: str,
+        path: str,
         fixed_map: bool = False,
         no_subdir: bool = False,
         read_only: bool = False,
@@ -99,41 +170,43 @@ cdef class LmdbEnvironment:
             self.close()
             _check_rc(rc)
         
-        cdef unsigned int env_flags = 0
-        if fixed_map:
-            env_flags |= lmdb.MDB_FIXEDMAP
-        if no_subdir:
-            env_flags |= lmdb.MDB_NOSUBDIR
-        if read_only:
-            env_flags |= lmdb.MDB_RDONLY
-        if write_map:
-            env_flags |= lmdb.MDB_WRITEMAP
-        if no_meta_sync:
-            env_flags |= lmdb.MDB_NOMETASYNC
-        if no_sync:
-            env_flags |= lmdb.MDB_NOSYNC
-        if map_async:
-            env_flags |= lmdb.MDB_MAPASYNC
-        if no_tls:
-            env_flags |= lmdb.MDB_NOTLS
-        if no_lock:
-            env_flags |= lmdb.MDB_NOLOCK
-        if no_readahead:
-            env_flags |= lmdb.MDB_NORDAHEAD
-        if no_meminit:
-            env_flags |= lmdb.MDB_NOMEMINIT
-
-        rc = lmdb.mdb_env_open(self.env, env_name.encode(), env_flags, 0664)
+        # self.set_map_size()
+        # self.set_max_readers()
+        # self.set_max_dbs()
+        # self.set_flags()
+        cdef unsigned int flags = _env_flags_to_int(
+            fixed_map,
+            no_subdir,
+            read_only,
+            write_map,
+            no_meta_sync,
+            no_sync,
+            map_async,
+            no_tls,
+            no_lock,
+            no_readahead,
+            no_meminit,
+        )
+        rc = lmdb.mdb_env_open(self.env, path.encode(), flags, 0664)
         if rc:
             self.close()
             _check_rc(rc)
 
-    def copy(self):
-        pass
+    def copy(self, path: str) -> None:
+        rc = lmdb.mdb_env_copy(self.env, path.encode())
+        _check_rc(rc)
 
-    def copy_fd(self):
-        pass
+    # def copy_fd(self):
+    #     pass
 
+    def copy2(self, path: str, compact: bool = False) -> None:
+        cdef unsigned int flags = 0
+        if compact:
+            flags |= lmdb.MDB_CP_COMPACT
+        rc = lmdb.mdb_env_copy2(self.env, path.encode(), flags)
+    
+    # def copy_fd2(self):
+    #     pass
 
     def get_stat(self) -> _LmdbStat:
         if self.env is NULL:
@@ -166,43 +239,102 @@ cdef class LmdbEnvironment:
             envinfo.me_numreaders,
         )
 
-    def sync(self):
-        pass
+    def sync(self, force: bool) -> None:
+        cdef int _force = 0
+        if force:
+            _force = 1
+        rc = lmdb.mdb_env_sync(self.env, _force)
+        _check_rc(rc)
 
     def close(self) -> None:
         if self.env is not NULL:
             lmdb.mdb_env_close(self.env)
             self.env = NULL
 
-    def set_flags(self):
-        pass
+    def set_flags(
+        self,
+        fixed_map: bool = False,
+        no_subdir: bool = False,
+        read_only: bool = False,
+        write_map: bool = False,
+        no_meta_sync: bool = False,
+        no_sync: bool = False,
+        map_async: bool = False,
+        no_tls: bool = False,
+        no_lock: bool = False,
+        no_readahead: bool = False,
+        no_meminit: bool = False,
+        unset: bool = False,
+    ) -> None:
+        cdef unsigned int flags = _env_flags_to_int(
+            fixed_map,
+            no_subdir,
+            read_only,
+            write_map,
+            no_meta_sync,
+            no_sync,
+            map_async,
+            no_tls,
+            no_lock,
+            no_readahead,
+            no_meminit,
+        )
+        cdef int onoff = 1
+        if unset:
+            onoff = 0
 
-    def get_flags(self):
-        pass
+        rc = lmdb.mdb_env_set_flags(self.env, flags, onoff)
+        _check_rc(rc)
 
-    def get_path(self):
-        pass
+    def get_flags(self) -> _LmdbEnvFlags:
+        cdef unsigned int flags
+        rc = lmdb.mdb_env_get_flags(self.env, &flags)
+        _check_rc(rc)
+        return _LmdbEnvFlags(
+            _flag_is_set(flags, lmdb.MDB_FIXEDMAP),
+            _flag_is_set(flags, lmdb.MDB_NOSUBDIR),
+            _flag_is_set(flags, lmdb.MDB_RDONLY),
+            _flag_is_set(flags, lmdb.MDB_WRITEMAP),
+            _flag_is_set(flags, lmdb.MDB_NOMETASYNC),
+            _flag_is_set(flags, lmdb.MDB_NOSYNC),
+            _flag_is_set(flags, lmdb.MDB_MAPASYNC),
+            _flag_is_set(flags, lmdb.MDB_NOTLS),
+            _flag_is_set(flags, lmdb.MDB_NOLOCK),
+            _flag_is_set(flags, lmdb.MDB_NORDAHEAD),
+            _flag_is_set(flags, lmdb.MDB_NOMEMINIT),
+        )
+
+    def get_path(self) -> str:
+        cdef char* path
+        rc = lmdb.mdb_env_get_path(self.env, &path)
+        _check_rc(rc)
+        py_path = path
+        return py_path.decode()
     
-    def get_fd(self):
-        pass
+    # def get_fd(self):
+    #     pass
 
-    def set_map_size(self):
-        pass
+    def set_map_size(self, size: int) -> None:
+        rc = lmdb.mdb_env_set_mapsize(self.env, size)
+        _check_rc(rc)
 
-    def set_max_readers(self):
-        pass
+    def set_max_readers(self, readers: int) -> None:
+        rc = lmdb.mdb_env_set_maxreaders(self.env, readers)
+        _check_rc(rc)
 
-    def set_max_dbs(self):
-        pass
+    def get_max_readers(self) -> int:
+        cdef unsigned int readers
+        rc = lmdb.mdb_env_get_maxreaders(self.env, &readers)
+        _check_rc(rc)
+        py_readers = readers
+        return py_readers
 
-    def get_max_key_size(self):
-        pass
+    def set_max_dbs(self, dbs: int) -> None:
+        rc = lmdb.mdb_env_set_maxdbs(self.env, dbs)
+        _check_rc(rc)
 
-    def set_user_ctx(self):
-        pass
-
-    def get_user_ctx(self):
-        pass
+    def get_max_key_size(self) -> int:
+        return lmdb.mdb_env_get_maxkeysize(self.env)
 
     def __dealloc__(self):
         if self.env is not NULL:
@@ -214,8 +346,13 @@ cdef class LmdbTransaction:
     cdef lmdb.MDB_txn* txn
 
     def __cinit__(self, env: LmdbEnvironment, read_only: bool = True):
-        rc = lmdb.mdb_txn_begin(env.env, NULL, lmdb.MDB_RDONLY if read_only else 0, &self.txn)
-        _check_rc(rc)
+        cdef unsigned int flags = 0
+        if read_only:
+            flags |= lmdb.MDB_RDONLY
+        rc = lmdb.mdb_txn_begin(env.env, NULL, flags, &self.txn)
+        if rc:
+            self.abort()
+            _check_rc(rc)
 
     def get_id(self) -> int:
         if self.txn is not NULL:
@@ -232,14 +369,6 @@ cdef class LmdbTransaction:
         if self.txn is not NULL:
             lmdb.mdb_txn_abort(self.txn)
             self.txn = NULL
-
-    def reset(self) -> None:
-        if self.txn is not NULL:
-            lmdb.mdb_txn_reset(self.txn)
-
-    def renew(self) -> None:
-        if self.txn is not NULL:
-            lmdb.mdb_txn_renew(self.txn)
 
     def __dealloc__(self):
         if self.txn is not NULL:
@@ -267,8 +396,37 @@ cdef class _LmdbData:
 cdef class LmdbDatabase:
     cdef lmdb.MDB_dbi dbi
 
-    def __cinit__(self, txn: LmdbTransaction) -> int:
-        rc = lmdb.mdb_dbi_open(txn.txn, NULL, 0, &self.dbi)
+    def __cinit__(
+        self,
+        txn: LmdbTransaction,
+        name: Optional[str] = None,
+        reverse_key: bool = False,
+        duplicate_sort: bool = False,
+        integer_key: bool = False,
+        duplicate_fixed: bool = False,
+        integer_duplicate: bool = False,
+        reverse_duplicate: bool = False,
+        create: bool = False
+    ):
+        cdef char* c_name = NULL
+        if name is not None:
+            c_name = name
+        cdef unsigned int flags = 0
+        if reverse_key:
+            flags |= lmdb.MDB_REVERSEKEY
+        if duplicate_sort:
+            flags |= lmdb.MDB_DUPSORT
+        if integer_key:
+            flags |= lmdb.MDB_INTEGERKEY
+        if duplicate_fixed:
+            flags |= lmdb.MDB_DUPFIXED
+        if integer_duplicate:
+            flags |= lmdb.MDB_INTEGERDUP
+        if reverse_duplicate:
+            flags |= lmdb.MDB_REVERSEDUP
+        if create:
+            flags |= lmdb.MDB_CREATE
+        rc = lmdb.mdb_dbi_open(txn.txn, c_name, flags, &self.dbi)
         _check_rc(rc)
 
     def get_stat(self, txn: LmdbTransaction) -> _LmdbStat:
@@ -287,7 +445,15 @@ cdef class LmdbDatabase:
     def get_flags(self, txn: LmdbTransaction) -> int:
         cdef unsigned int flags
         rc = lmdb.mdb_dbi_flags(txn.txn, self.dbi, &flags)
-        return flags
+        return _LmdbDbFlags(
+            _flag_is_set(flags, lmdb.MDB_REVERSEKEY),
+            _flag_is_set(flags, lmdb.MDB_DUPSORT),
+            _flag_is_set(flags, lmdb.MDB_INTEGERKEY),
+            _flag_is_set(flags, lmdb.MDB_DUPFIXED),
+            _flag_is_set(flags, lmdb.MDB_INTEGERDUP),
+            _flag_is_set(flags, lmdb.MDB_REVERSEDUP),
+            _flag_is_set(flags, lmdb.MDB_CREATE),
+        )
 
     def empty_db(self, txn: LmdbTransaction) -> None:
         rc = lmdb.mdb_drop(txn.txn, self.dbi, 0)
@@ -297,24 +463,41 @@ cdef class LmdbDatabase:
         rc = lmdb.mdb_drop(txn.txn, self.dbi, 1)
         _check_rc(rc)
 
-    def put(self, key: bytes, value: bytes, txn: LmdbTransaction) -> None:
-        _key = _LmdbData(key)
-        _value = _LmdbData(value)
-
-        rc = lmdb.mdb_put(txn.txn, self.dbi, &_key.data, &_value.data, 0)
-        _check_rc(rc)
-
     def get(self, key: bytes, txn: LmdbTransaction) -> bytes:
         _key = _LmdbData(key)
         _value = _LmdbData()
-
         rc = lmdb.mdb_get(txn.txn, self.dbi, &_key.data, &_value.data)
         _check_rc(rc)
-
         return _value.to_bytes()
+    
+    def put(
+        self,
+        key: bytes,
+        value: bytes,
+        txn: LmdbTransaction,
+        no_duplicate: bool = False,
+        no_overwrite: bool = False,
+        reserve: bool = False,
+        append: bool = False,
+        append_duplicate: bool = False,
+    ) -> None:
+        _key = _LmdbData(key)
+        _value = _LmdbData(value)
+        cdef unsigned int flags = 0
+        if no_duplicate:
+            flags |= lmdb.MDB_NODUPDATA
+        if no_overwrite:
+            flags |= lmdb.MDB_NOOVERWRITE
+        if reserve:
+            flags |= lmdb.MDB_RESERVE
+        if append:
+            flags |= lmdb.MDB_APPEND
+        if append_duplicate:
+            flags |= lmdb.MDB_APPENDDUP
+        rc = lmdb.mdb_put(txn.txn, self.dbi, &_key.data, &_value.data, flags)
+        _check_rc(rc)
 
     def delete(self, key: bytes, txn: LmdbTransaction) -> None:
         _key = _LmdbData(key)
-
         rc = lmdb.mdb_del(txn.txn, self.dbi, &_key.data, NULL)
         _check_rc(rc)
