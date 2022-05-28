@@ -62,8 +62,6 @@ cdef extern from "lmdb.h":
         pass
     
     # Return Codes
-    cdef int ENOMEM
-
     cdef int MDB_SUCCESS
     cdef int MDB_KEYEXIST
     cdef int MDB_NOTFOUND
