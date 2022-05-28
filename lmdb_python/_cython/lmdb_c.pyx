@@ -69,6 +69,8 @@ def _check_rc(rc: int) -> None:
         if rc == errno.ENOMEM:
             raise MemoryError()
         if rc > 0:
+            if os.name == "nt":
+                raise OSError(winerror=rc)
             raise OSError(rc, os.strerror(rc))
         raise LmdbException(rc)
 
