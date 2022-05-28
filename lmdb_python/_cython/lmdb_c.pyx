@@ -29,6 +29,25 @@ MDB_BAD_TXN = lmdb.MDB_BAD_TXN
 MDB_BAD_VALSIZE = lmdb.MDB_BAD_VALSIZE
 MDB_BAD_DBI = lmdb.MDB_BAD_DBI
 
+_LmdbEnvStat = namedtuple(
+    "_LmdbEnvStat", [
+        "ms_psize",
+        "ms_depth",
+        "ms_branch_pages",
+        "ms_leaf_pages",
+        "ms_overflow_pages",
+        "ms_entries",
+    ]
+)
+_LmdbEnvInfo = namedtuple(
+    "_LmdbEnvInfo", [
+        "me_mapsize",
+        "me_last_pgno",
+        "me_last_txnid",
+        "me_maxreaders",
+        "me_numreaders",
+    ]
+)
 
 def strerror(err: int) -> str:
     return lmdb.mdb_strerror(err).decode()
@@ -44,7 +63,6 @@ class LmdbException(Exception):
 def _check_rc(rc: int) -> None:
     if rc != 0:
         raise LmdbException(rc)
-
 
 cdef class LmdbEnvironment:
     cdef lmdb.MDB_env* env
@@ -62,11 +80,11 @@ cdef class LmdbEnvironment:
         rc = lmdb.mdb_env_open(self.env, env_name.encode("utf-8"), env_flags, 0664)
         _check_rc(rc)
 
-    def get_stat(self) -> _LmdbStat:
+    def get_stat(self) -> _LmdbEnvStat:
         cdef lmdb.MDB_stat stat
         rc = lmdb.mdb_env_stat(self.env, &stat)
         _check_rc(rc)
-        return _LmdbStat(
+        return _LmdbEnvStat(
             stat.ms_psize,
             stat.ms_depth,
             stat.ms_branch_pages,
@@ -157,26 +175,3 @@ cdef class LmdbDatabase:
 
         rc = lmdb.mdb_del(txn.txn, self.dbi, &_key.data, NULL)
         _check_rc(rc)
-
-
-_LmdbStat = namedtuple(
-    "_LmdbStat", [
-        "ms_psize",
-        "ms_depth",
-        "ms_branch_pages",
-        "ms_leaf_pages",
-        "ms_overflow_pages",
-        "ms_entries",
-    ]
-)
-
-
-_LmdbEnvInfo = namedtuple(
-    "_LmdbEnvInfo", [
-        "me_mapsize",
-        "me_last_pgno",
-        "me_last_txnid",
-        "me_maxreaders",
-        "me_numreaders",
-    ]
-)
