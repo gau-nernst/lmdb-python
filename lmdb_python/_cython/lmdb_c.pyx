@@ -1,3 +1,4 @@
+import ctypes
 import errno
 import os
 from collections import namedtuple
@@ -70,7 +71,7 @@ def _check_rc(rc: int) -> None:
             raise MemoryError()
         if rc > 0:
             if os.name == "nt":
-                raise WindowsError(rc)
+                raise ctypes.WinError(rc)
             raise OSError(rc, os.strerror(rc))
         raise LmdbException(rc)
 
