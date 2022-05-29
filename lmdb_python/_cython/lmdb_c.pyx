@@ -201,15 +201,20 @@ cdef class LmdbEnvironment:
         _check_rc(rc)
 
     def copy_fd(self, fd: int) -> None:
-        IF UNAME_SYSNAME == "Linux" or UNAME_SYSNAME == "Darwin":
-            rc = lmdb.mdb_env_copyfd(self.env, fd)
-            _check_rc(rc)
-        ELSE:
-            win32_fd = msvcrt.get_osfhandle(fd)
-            cdef void* c_win32_fd = <void*>win32_fd
-            rc = lmdb.mdb_env_copyfd(self.env, c_win32_fd)
-            _check_rc(rc)
+        # IF UNAME_SYSNAME != "Linux" and UNAME_SYSNAME != "Darwin":
+            # rc = lmdb.mdb_env_copyfd(self.env, fd)
+            # _check_rc(rc)
+        # ELSE:
+            # win32_fd = msvcrt.get_osfhandle(fd)
+            # cdef void* c_win32_fd = <void*>win32_fd
+            # rc = lmdb.mdb_env_copyfd(self.env, c_win32_fd)
+            # _check_rc(rc)
             # raise NotImplementedError("Not available on Windows")
+        if os.name == "nt":
+            fd = msvcrt.get_osfhandle(fd)
+        cdef lmdb.mdb_filehandle_t c_fd = <lmdb.mdb_filehandle_t>fd
+        rc = lmdb.mdb_env_copyfd(self.env, c_fd)
+        _check_rc(rc)
 
     def copy2(self, path: str, compact: bool = False) -> None:
         cdef unsigned int flags = 0
