@@ -205,8 +205,9 @@ cdef class LmdbEnvironment:
             rc = lmdb.mdb_env_copyfd(self.env, fd)
             _check_rc(rc)
         ELSE:
-            win32_fd = <void*>msvcrt.get_osfhandle(fd)
-            rc = lmdb.mdb_env_copyfd(self.env, win32_fd)
+            win32_fd = msvcrt.get_osfhandle(fd)
+            cdef void* c_win32_fd = <void*>win32_fd
+            rc = lmdb.mdb_env_copyfd(self.env, c_win32_fd)
             _check_rc(rc)
             # raise NotImplementedError("Not available on Windows")
 
