@@ -9,7 +9,6 @@ cdef extern from "lmdb.h":
     cdef int MDB_VERSION_MAJOR
     cdef int MDB_VERSION_MINOR
     cdef int MDB_VERSION_PATCH
-    cdef char* MDB_VERSION_STRING
     
     ctypedef struct MDB_env:
         pass

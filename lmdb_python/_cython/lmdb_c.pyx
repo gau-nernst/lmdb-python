@@ -331,11 +331,10 @@ cdef class LmdbEnvironment:
         cdef lmdb.mdb_filehandle_t fd
         rc = lmdb.mdb_env_get_fd(self.env, &fd)
         _check_rc(rc)
-        py_fd = msvcrt.open_osfhandle(<int>fd, 0) if os.name == "nt" else fd
-        # IF UNAME_SYSNAME == "Linux" or UNAME_SYSNAME == "Darwin":
-        #     py_fd = fd
-        # ELSE:
-        #     py_fd = msvcrt.open_osfhandle(<int>fd, 0)
+        if os.name == "nt":
+            py_fd = msvcrt.open_osfhandle(<int>fd, 0)
+        else:
+            py_fd = fd
         return py_fd
 
     def set_map_size(self, size: int) -> None:
