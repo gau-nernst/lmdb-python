@@ -334,7 +334,7 @@ cdef class LmdbEnvironment:
         IF UNAME_SYSNAME == "Linux" or UNAME_SYSNAME == "Darwin":
             py_fd = fd
         ELSE:
-            py_fd = msvcrt.open_osfhandle(fd, 0)
+            py_fd = msvcrt.open_osfhandle(<int>fd, 0)
         return py_fd
 
     def set_map_size(self, size: int) -> None:
