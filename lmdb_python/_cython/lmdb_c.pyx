@@ -203,6 +203,10 @@ cdef class LmdbEnvironment:
         rc = lmdb.mdb_env_copyfd(self.env, fd)
         _check_rc(rc)
 
+    def copy_fd(self, fd: ctypes.c_void_p) -> None:
+        rc = lmdb.mdb_env_copyfd(self.env, fd)
+        _check_rc(rc)
+
     def copy2(self, path: str, compact: bool = False) -> None:
         cdef unsigned int flags = 0
         if compact:
@@ -212,6 +216,13 @@ cdef class LmdbEnvironment:
     
     # might have problems on Windows
     def copy_fd2(self, fd: int, compact: bool = False) -> None:
+        cdef unsigned int flags = 0
+        if compact:
+            flags |= lmdb.MDB_CP_COMPACT
+        rc = lmdb.mdb_env_copyfd2(self.env, fd, flags)
+        _check_rc(rc)
+    
+    def copy_fd2(self, fd: ctypes.c_void_p, compact: bool = False) -> None:
         cdef unsigned int flags = 0
         if compact:
             flags |= lmdb.MDB_CP_COMPACT
@@ -322,12 +333,11 @@ cdef class LmdbEnvironment:
         return py_path.decode()
     
     # might have problems on Windows
-    def get_fd(self) -> int:
+    def get_fd(self):
         cdef lmdb.mdb_filehandle_t fd
         rc = lmdb.mdb_env_get_fd(self.env, &fd)
         _check_rc(rc)
-        py_fd = fd
-        return py_fd
+        return fd
 
     def set_map_size(self, size: int) -> None:
         rc = lmdb.mdb_env_set_mapsize(self.env, size)
