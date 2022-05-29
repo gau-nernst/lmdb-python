@@ -31,8 +31,8 @@ MDB_BAD_TXN = lmdb.MDB_BAD_TXN
 MDB_BAD_VALSIZE = lmdb.MDB_BAD_VALSIZE
 MDB_BAD_DBI = lmdb.MDB_BAD_DBI
 
-_LmdbStat = namedtuple(
-    "_LmdbEnvStat", [
+LmdbStat = namedtuple(
+    "LmdbStat", [
         "ms_psize",
         "ms_depth",
         "ms_branch_pages",
@@ -41,8 +41,8 @@ _LmdbStat = namedtuple(
         "ms_entries",
     ]
 )
-_LmdbEnvInfo = namedtuple(
-    "_LmdbEnvInfo", [
+LmdbEnvInfo = namedtuple(
+    "LmdbEnvInfo", [
         "me_mapsize",
         "me_last_pgno",
         "me_last_txnid",
@@ -50,8 +50,8 @@ _LmdbEnvInfo = namedtuple(
         "me_numreaders",
     ]
 )
-_LmdbEnvFlags = namedtuple(
-    "_LmdbEnvFlags", [
+LmdbEnvFlags = namedtuple(
+    "LmdbEnvFlags", [
         "fixed_map",
         "no_subdir",
         "read_only",
@@ -65,8 +65,8 @@ _LmdbEnvFlags = namedtuple(
         "no_meminit",
     ]
 )
-_LmdbDbFlags = namedtuple(
-    "_LmdbDbFlags", [
+LmdbDbFlags = namedtuple(
+    "LmdbDbFlags", [
         "reverse_key",
         "duplicate_sort",
         "integer_key",
@@ -208,14 +208,14 @@ cdef class LmdbEnvironment:
     # def copy_fd2(self):
     #     pass
 
-    def get_stat(self) -> _LmdbStat:
+    def get_stat(self) -> LmdbStat:
         if self.env is NULL:
-            return _LmdbStat(0, 0, 0, 0, 0, 0)
+            return LmdbStat(0, 0, 0, 0, 0, 0)
 
         cdef lmdb.MDB_stat stat
         rc = lmdb.mdb_env_stat(self.env, &stat)
         _check_rc(rc)
-        return _LmdbStat(
+        return LmdbStat(
             stat.ms_psize,
             stat.ms_depth,
             stat.ms_branch_pages,
@@ -224,14 +224,14 @@ cdef class LmdbEnvironment:
             stat.ms_entries,
         )
 
-    def get_info(self) -> _LmdbEnvInfo:
+    def get_info(self) -> LmdbEnvInfo:
         if self.env is NULL:
-            return _LmdbEnvInfo(0, 0, 0, 0, 0)
+            return LmdbEnvInfo(0, 0, 0, 0, 0)
 
         cdef lmdb.MDB_envinfo envinfo
         rc = lmdb.mdb_env_info(self.env, &envinfo)
         _check_rc(rc)
-        return _LmdbEnvInfo(
+        return LmdbEnvInfo(
             envinfo.me_mapsize,
             envinfo.me_last_pgno,
             envinfo.me_last_txnid,
@@ -286,11 +286,11 @@ cdef class LmdbEnvironment:
         rc = lmdb.mdb_env_set_flags(self.env, flags, onoff)
         _check_rc(rc)
 
-    def get_flags(self) -> _LmdbEnvFlags:
+    def get_flags(self) -> LmdbEnvFlags:
         cdef unsigned int flags
         rc = lmdb.mdb_env_get_flags(self.env, &flags)
         _check_rc(rc)
-        return _LmdbEnvFlags(
+        return LmdbEnvFlags(
             _flag_is_set(flags, lmdb.MDB_FIXEDMAP),
             _flag_is_set(flags, lmdb.MDB_NOSUBDIR),
             _flag_is_set(flags, lmdb.MDB_RDONLY),
@@ -429,11 +429,11 @@ cdef class LmdbDatabase:
         rc = lmdb.mdb_dbi_open(txn.txn, c_name, flags, &self.dbi)
         _check_rc(rc)
 
-    def get_stat(self, txn: LmdbTransaction) -> _LmdbStat:
+    def get_stat(self, txn: LmdbTransaction) -> LmdbStat:
         cdef lmdb.MDB_stat stat
         rc = lmdb.mdb_stat(txn.txn, self.dbi, &stat)
         _check_rc(rc)
-        return _LmdbStat(
+        return LmdbStat(
             stat.ms_psize,
             stat.ms_depth,
             stat.ms_branch_pages,
@@ -445,7 +445,7 @@ cdef class LmdbDatabase:
     def get_flags(self, txn: LmdbTransaction) -> int:
         cdef unsigned int flags
         rc = lmdb.mdb_dbi_flags(txn.txn, self.dbi, &flags)
-        return _LmdbDbFlags(
+        return LmdbDbFlags(
             _flag_is_set(flags, lmdb.MDB_REVERSEKEY),
             _flag_is_set(flags, lmdb.MDB_DUPSORT),
             _flag_is_set(flags, lmdb.MDB_INTEGERKEY),

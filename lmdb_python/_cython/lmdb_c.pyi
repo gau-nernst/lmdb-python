@@ -26,8 +26,8 @@ MDB_BAD_TXN: int
 MDB_BAD_VALSIZE: int
 MDB_BAD_DBI: int
 
-_LmdbStat = namedtuple(
-    "_LmdbStat",
+LmdbStat = namedtuple(
+    "LmdbStat",
     [
         "ms_psize",
         "ms_depth",
@@ -37,15 +37,42 @@ _LmdbStat = namedtuple(
         "ms_entries",
     ],
 )
-
-_LmdbEnvInfo = namedtuple(
-    "_LmdbEnvInfo",
+LmdbEnvInfo = namedtuple(
+    "LmdbEnvInfo",
     [
         "me_mapsize",
         "me_last_pgno",
         "me_last_txnid",
         "me_maxreaders",
         "me_numreaders",
+    ],
+)
+LmdbEnvFlags = namedtuple(
+    "LmdbEnvFlags",
+    [
+        "fixed_map",
+        "no_subdir",
+        "read_only",
+        "write_map",
+        "no_meta_sync",
+        "no_sync",
+        "map_async",
+        "no_tls",
+        "no_lock",
+        "no_readahead",
+        "no_meminit",
+    ],
+)
+LmdbDbFlags = namedtuple(
+    "LmdbDbFlags",
+    [
+        "reverse_key",
+        "duplicate_sort",
+        "integer_key",
+        "duplicate_fixed",
+        "integer_duplicate",
+        "reverse_duplicate",
+        "creat",
     ],
 )
 
@@ -55,11 +82,9 @@ class LmdbException(Exception):
     rc: int
 
 class LmdbEnvironment:
-    def __init__(
-        self, env_name: str, no_subdir: bool = False, read_only: bool = False
-    ): ...
-    def get_stat(self) -> _LmdbStat: ...
-    def get_info(self) -> _LmdbEnvInfo: ...
+    def __init__(self, path: str, no_subdir: bool = False, read_only: bool = False): ...
+    def get_stat(self) -> LmdbStat: ...
+    def get_info(self) -> LmdbEnvInfo: ...
     def close(self) -> None: ...
 
 class LmdbTransaction:
