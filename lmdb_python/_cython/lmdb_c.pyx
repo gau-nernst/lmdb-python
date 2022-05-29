@@ -3,6 +3,8 @@ import errno
 import os
 from collections import namedtuple
 from typing import Dict, Optional
+if os.name == "nt":
+    import msvcrt
 
 cimport lmdb_python._cython.lmdb as lmdb
 
@@ -203,7 +205,10 @@ cdef class LmdbEnvironment:
             rc = lmdb.mdb_env_copyfd(self.env, fd)
             _check_rc(rc)
         ELSE:
-            raise NotImplementedError("Not available on Windows")
+            win32_fd = msvcrt.get_osfhandle(fd)
+            rc = lmdb.mdb_env_copyfd(self.env, win32_fd)
+            _check_rc(rc)
+            # raise NotImplementedError("Not available on Windows")
 
     def copy2(self, path: str, compact: bool = False) -> None:
         cdef unsigned int flags = 0
