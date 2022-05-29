@@ -4,7 +4,7 @@
 
 Another Python bindings for LMDB.
 
-This repo serves as a practice for me to learn calling 3rd-party C/C++ libraries from Python using Cython. The compiled C extension is built and statically linked against the master branch of LMDB [here](https://git.openldap.org/openldap/openldap/tree/mdb.master).
+This repo serves as a practice for me to learn how to use 3rd-party C/C++ libraries in Python using Cython. The compiled C extension is statically linked against the master branch of OpenLDAP [here](https://git.openldap.org/openldap/openldap).
 
 ## Installation
 

@@ -1,12 +1,14 @@
 cdef extern from "lmdb.h":
+    ctypedef int size_t
     ctypedef int mdb_mode_t
-    ctypedef int mdb_size_t
-    ctypedef int mdb_filehandle_t
-    
+    IF UNAME_SYSNAME == "Linux" or UNAME_SYSNAME == "Darwin":
+        ctypedef int mdb_filehandle_t
+    ELSE:
+        ctypedef void* mdb_filehandle_t
+
     cdef int MDB_VERSION_MAJOR
     cdef int MDB_VERSION_MINOR
     cdef int MDB_VERSION_PATCH
-    cdef char* MDB_VERSION_STRING
     
     ctypedef struct MDB_env:
         pass
@@ -87,15 +89,15 @@ cdef extern from "lmdb.h":
     ctypedef struct MDB_stat:
         unsigned int ms_psize
         unsigned int ms_depth
-        mdb_size_t ms_branch_pages
-        mdb_size_t ms_leaf_pages
-        mdb_size_t ms_overflow_pages
-        mdb_size_t ms_entries
+        size_t ms_branch_pages
+        size_t ms_leaf_pages
+        size_t ms_overflow_pages
+        size_t ms_entries
     ctypedef struct MDB_envinfo:
         void *me_mapaddr
-        mdb_size_t me_mapsize
-        mdb_size_t me_last_pgno
-        mdb_size_t me_last_txnid
+        size_t me_mapsize
+        size_t me_last_pgno
+        size_t me_last_txnid
         unsigned int me_maxreaders
         unsigned int me_numreaders
 
@@ -116,7 +118,7 @@ cdef extern from "lmdb.h":
     int mdb_env_get_flags(MDB_env* env, unsigned int* flags)
     int mdb_env_get_path(MDB_env* env, const char** path)
     int mdb_env_get_fd(MDB_env* env, mdb_filehandle_t* fd)
-    int mdb_env_set_mapsize(MDB_env* env, mdb_size_t size)
+    int mdb_env_set_mapsize(MDB_env* env, size_t size)
     int mdb_env_set_maxreaders(MDB_env* env, unsigned int readers)
     int mdb_env_get_maxreaders(MDB_env* env, unsigned int* readers)
     int mdb_env_set_maxdbs(MDB_env* env, MDB_dbi dbs)
@@ -128,7 +130,7 @@ cdef extern from "lmdb.h":
 
     int mdb_txn_begin(MDB_env* env, MDB_txn* parent, unsigned int flags, MDB_txn** txn)
     MDB_env* mdb_txn_env(MDB_txn* txn)
-    mdb_size_t mdb_txn_id(MDB_txn* txn)
+    size_t mdb_txn_id(MDB_txn* txn)
     int mdb_txn_commit(MDB_txn* txn)
     void mdb_txn_abort(MDB_txn* txn)
     void mdb_txn_reset(MDB_txn* txn)
@@ -156,7 +158,7 @@ cdef extern from "lmdb.h":
     int mdb_cursor_get(MDB_cursor* cursor, MDB_val* key, MDB_val* data, MDB_cursor_op op)
     int mdb_cursor_put(MDB_cursor* cursor, MDB_val* key, MDB_val* data, unsigned int flags)
     int mdb_cursor_del(MDB_cursor* cursor, unsigned int flags)
-    int mdb_cursor_count(MDB_cursor* cursor, mdb_size_t* countp)
+    int mdb_cursor_count(MDB_cursor* cursor, size_t* countp)
     
     int mdb_cmp(MDB_txn* txn, MDB_dbi dbi, const MDB_val* a, const MDB_val* b)
     int mdb_dcmp(MDB_txn* txn, MDB_dbi dbi, const MDB_val* a, const MDB_val* b)

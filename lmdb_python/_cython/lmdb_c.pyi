@@ -1,4 +1,5 @@
-from typing import Optional, Dict
+from collections import namedtuple
+from typing import Optional
 
 MDB_VERSION_MAJOR: int
 MDB_VERSION_MINOR: int
@@ -25,62 +26,78 @@ MDB_BAD_TXN: int
 MDB_BAD_VALSIZE: int
 MDB_BAD_DBI: int
 
+LmdbStat = namedtuple(
+    "LmdbStat",
+    [
+        "ms_psize",
+        "ms_depth",
+        "ms_branch_pages",
+        "ms_leaf_pages",
+        "ms_overflow_pages",
+        "ms_entries",
+    ],
+)
+LmdbEnvInfo = namedtuple(
+    "LmdbEnvInfo",
+    [
+        "me_mapsize",
+        "me_last_pgno",
+        "me_last_txnid",
+        "me_maxreaders",
+        "me_numreaders",
+    ],
+)
+LmdbEnvFlags = namedtuple(
+    "LmdbEnvFlags",
+    [
+        "fixed_map",
+        "no_subdir",
+        "read_only",
+        "write_map",
+        "no_meta_sync",
+        "no_sync",
+        "map_async",
+        "no_tls",
+        "no_lock",
+        "no_readahead",
+        "no_meminit",
+    ],
+)
+LmdbDbFlags = namedtuple(
+    "LmdbDbFlags",
+    [
+        "reverse_key",
+        "duplicate_sort",
+        "integer_key",
+        "duplicate_fixed",
+        "integer_duplicate",
+        "reverse_duplicate",
+        "creat",
+    ],
+)
+
 def strerror(err: int) -> str: ...
 
+class LmdbException(Exception):
+    rc: int
+
 class LmdbEnvironment:
-    def create_env(self) -> int: ...
-    def open_env(
-        self, env_name: str, no_subdir: bool = False, read_only: bool = False
-    ) -> int: ...
-    def close_env(self) -> None: ...
+    def __init__(self, path: str, no_subdir: bool = False, read_only: bool = False): ...
+    def get_stat(self) -> LmdbStat: ...
+    def get_info(self) -> LmdbEnvInfo: ...
+    def close(self) -> None: ...
 
 class LmdbTransaction:
-    def begin_txn(self, env: LmdbEnvironment, read_only: bool = True) -> int: ...
-    def commit_txn(self) -> int: ...
-    def abort_txn(self) -> None: ...
+    def __init__(self, env: LmdbEnvironment, read_only: bool = True): ...
+    def commit(self) -> None: ...
+    def abort(self) -> None: ...
 
-class LmdbDatabase:
-    def open_dbi(self, txn: LmdbTransaction) -> int: ...
-
-class LmdbValue:
+class _LmdbData:
     def __init__(self, data: Optional[bytes]): ...
     def to_bytes(self) -> Optional[bytes]: ...
 
-def put(
-    key: LmdbValue, value: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase
-) -> int: ...
-def get(
-    key: LmdbValue, value: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase
-) -> int: ...
-def delete(key: LmdbValue, txn: LmdbTransaction, dbi: LmdbDatabase) -> int: ...
-
-class LmdbStat:
-    @property
-    def ms_psize(self) -> int: ...
-    @property
-    def ms_depth(self) -> int: ...
-    @property
-    def ms_branch_pages(self) -> int: ...
-    @property
-    def ms_leaf_pages(self) -> int: ...
-    @property
-    def ms_overflow_pages(self) -> int: ...
-    @property
-    def ms_entries(self) -> int: ...
-    def to_dict(self) -> Dict[str, int]: ...
-
-class LmdbEnvInfo:
-    @property
-    def me_mapsize(self) -> int: ...
-    @property
-    def me_last_pgno(self) -> int: ...
-    @property
-    def me_last_txnid(self) -> int: ...
-    @property
-    def me_maxreaders(self) -> int: ...
-    @property
-    def me_numreaders(self) -> int: ...
-    def to_dict(self) -> Dict[str, int]: ...
-
-def env_stat(env: LmdbEnvironment, stat: LmdbStat) -> int: ...
-def env_info(env: LmdbEnvironment, envinfo: LmdbEnvInfo) -> int: ...
+class LmdbDatabase:
+    def __init__(self, txn: LmdbTransaction): ...
+    def put(self, key: bytes, value: bytes, txn: LmdbTransaction) -> None: ...
+    def get(self, key: bytes, txn: LmdbTransaction) -> bytes: ...
+    def delete(self, key: bytes, txn: LmdbTransaction) -> None: ...
