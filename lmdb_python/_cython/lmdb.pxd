@@ -1,10 +1,13 @@
 cdef extern from "lmdb.h":
     ctypedef int size_t
     ctypedef int mdb_mode_t
-    IF UNAME_SYSNAME == "Windows":
-        ctypedef void* mdb_filehandle
+    # ctypedef int mdb_filehandle_t
+    IF UNAME_SYSNAME == "Linux":
+        ctypedef int mdb_filehandle_t
+    ELIF UNAME_SYSNAME == "Darwin":
+        ctypedef int mdb_filehandle_t
     ELSE:
-        ctypedef int mdb_filehandle_t    
+        ctypedef void* mdb_filehandle_t
 
     cdef int MDB_VERSION_MAJOR
     cdef int MDB_VERSION_MINOR
