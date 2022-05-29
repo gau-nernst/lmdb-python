@@ -89,10 +89,10 @@ def strerror(err: int) -> str:
 def _env_flags_to_int(
     fixed_map: bool = False,
     no_subdir: bool = False,
-    read_only: bool = False,
-    write_map: bool = False,
-    no_meta_sync: bool = False,
     no_sync: bool = False,
+    read_only: bool = False,
+    no_meta_sync: bool = False,
+    write_map: bool = False,
     map_async: bool = False,
     no_tls: bool = False,
     no_lock: bool = False,
@@ -104,14 +104,14 @@ def _env_flags_to_int(
         flags |= lmdb.MDB_FIXEDMAP
     if no_subdir:
         flags |= lmdb.MDB_NOSUBDIR
-    if read_only:
-        flags |= lmdb.MDB_RDONLY
-    if write_map:
-        flags |= lmdb.MDB_WRITEMAP
-    if no_meta_sync:
-        flags |= lmdb.MDB_NOMETASYNC
     if no_sync:
         flags |= lmdb.MDB_NOSYNC
+    if read_only:
+        flags |= lmdb.MDB_RDONLY
+    if no_meta_sync:
+        flags |= lmdb.MDB_NOMETASYNC
+    if write_map:
+        flags |= lmdb.MDB_WRITEMAP
     if map_async:
         flags |= lmdb.MDB_MAPASYNC
     if no_tls:
@@ -153,12 +153,15 @@ cdef class LmdbEnvironment:
     def __cinit__(
         self,
         path: str,
+        map_size: int = 10 * 1024 * 1024,   # 10MB
+        max_readers: int = 126,
+        max_dbs: int = 0,
         fixed_map: bool = False,
         no_subdir: bool = False,
-        read_only: bool = False,
-        write_map: bool = False,
-        no_meta_sync: bool = False,
         no_sync: bool = False,
+        read_only: bool = False,
+        no_meta_sync: bool = False,
+        write_map: bool = False,
         map_async: bool = False,
         no_tls: bool = False,
         no_lock: bool = False,
@@ -169,18 +172,17 @@ cdef class LmdbEnvironment:
         if rc:
             self.close()
             _check_rc(rc)
-        
-        # self.set_map_size()
-        # self.set_max_readers()
-        # self.set_max_dbs()
-        # self.set_flags()
+        self.set_map_size(map_size)
+        self.set_max_readers(max_readers)
+        if max_dbs > 0:
+            self.set_max_dbs(max_dbs)
         cdef unsigned int flags = _env_flags_to_int(
             fixed_map,
             no_subdir,
-            read_only,
-            write_map,
-            no_meta_sync,
             no_sync,
+            read_only,
+            no_meta_sync,
+            write_map,
             map_async,
             no_tls,
             no_lock,
@@ -263,10 +265,10 @@ cdef class LmdbEnvironment:
         self,
         fixed_map: bool = False,
         no_subdir: bool = False,
-        read_only: bool = False,
-        write_map: bool = False,
-        no_meta_sync: bool = False,
         no_sync: bool = False,
+        read_only: bool = False,
+        no_meta_sync: bool = False,
+        write_map: bool = False,
         map_async: bool = False,
         no_tls: bool = False,
         no_lock: bool = False,
@@ -277,10 +279,10 @@ cdef class LmdbEnvironment:
         cdef unsigned int flags = _env_flags_to_int(
             fixed_map,
             no_subdir,
-            read_only,
-            write_map,
-            no_meta_sync,
             no_sync,
+            read_only,
+            no_meta_sync,
+            write_map,
             map_async,
             no_tls,
             no_lock,
@@ -488,25 +490,31 @@ cdef class LmdbDatabase:
         key: bytes,
         value: bytes,
         txn: LmdbTransaction,
-        no_duplicate: bool = False,
         no_overwrite: bool = False,
+        no_duplicate: bool = False,
+        current: bool = False,
         reserve: bool = False,
         append: bool = False,
         append_duplicate: bool = False,
+        multiple: bool = False,
     ) -> None:
         _key = _LmdbData(key)
         _value = _LmdbData(value)
         cdef unsigned int flags = 0
-        if no_duplicate:
-            flags |= lmdb.MDB_NODUPDATA
         if no_overwrite:
             flags |= lmdb.MDB_NOOVERWRITE
+        if no_duplicate:
+            flags |= lmdb.MDB_NODUPDATA
+        if current:
+            flags |= lmdb.MDB_CURRENT
         if reserve:
             flags |= lmdb.MDB_RESERVE
         if append:
             flags |= lmdb.MDB_APPEND
         if append_duplicate:
             flags |= lmdb.MDB_APPENDDUP
+        if multiple:
+            flags |= lmdb.MDB_MULTIPLE
         rc = lmdb.mdb_put(txn.txn, self.dbi, &_key.data, &_value.data, flags)
         _check_rc(rc)
 
