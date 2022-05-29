@@ -198,14 +198,12 @@ cdef class LmdbEnvironment:
         rc = lmdb.mdb_env_copy(self.env, path.encode())
         _check_rc(rc)
 
-    # might have problems on Windows
-    # def copy_fd(self, fd: int) -> None:
-    #     rc = lmdb.mdb_env_copyfd(self.env, fd)
-    #     _check_rc(rc)
-
-    # def copy_fd(self, fd: ctypes.c_void_p) -> None:
-    #     rc = lmdb.mdb_env_copyfd(self.env, fd)
-    #     _check_rc(rc)
+    def copy_fd(self, fd: int) -> None:
+        IF UNAME_SYSNAME == "Linux" or UNAME_SYSNAME == "Darwin":
+            rc = lmdb.mdb_env_copyfd(self.env, fd)
+            _check_rc(rc)
+        ELSE:
+            raise NotImplementedError("Not available on Windows")
 
     def copy2(self, path: str, compact: bool = False) -> None:
         cdef unsigned int flags = 0
@@ -214,20 +212,15 @@ cdef class LmdbEnvironment:
         rc = lmdb.mdb_env_copy2(self.env, path.encode(), flags)
         _check_rc(rc)
     
-    # might have problems on Windows
-    # def copy_fd2(self, fd: int, compact: bool = False) -> None:
-    #     cdef unsigned int flags = 0
-    #     if compact:
-    #         flags |= lmdb.MDB_CP_COMPACT
-    #     rc = lmdb.mdb_env_copyfd2(self.env, fd, flags)
-    #     _check_rc(rc)
-    
-    # def copy_fd2(self, fd: ctypes.c_void_p, compact: bool = False) -> None:
-    #     cdef unsigned int flags = 0
-    #     if compact:
-    #         flags |= lmdb.MDB_CP_COMPACT
-    #     rc = lmdb.mdb_env_copyfd2(self.env, fd, flags)
-    #     _check_rc(rc)
+    def copy_fd2(self, fd: int, compact: bool = False) -> None:
+        IF UNAME_SYSNAME == "Linux" or UNAME_SYSNAME == "Darwin":
+            cdef unsigned int flags = 0
+            if compact:
+                flags |= lmdb.MDB_CP_COMPACT
+            rc = lmdb.mdb_env_copyfd2(self.env, fd, flags)
+            _check_rc(rc)
+        ELSE:
+            raise NotImplementedError("Not available on Windows")
 
     def get_stat(self) -> LmdbStat:
         if self.env is NULL:
@@ -332,12 +325,14 @@ cdef class LmdbEnvironment:
         py_path = path
         return py_path.decode()
     
-    # might have problems on Windows
-    # def get_fd(self):
-    #     cdef lmdb.mdb_filehandle_t fd
-    #     rc = lmdb.mdb_env_get_fd(self.env, &fd)
-    #     _check_rc(rc)
-    #     return fd
+    def get_fd(self) -> int:
+        IF UNAME_SYSNAME == "Linux" or UNAME_SYSNAME == "Darwin":
+            cdef lmdb.mdb_filehandle_t fd
+            rc = lmdb.mdb_env_get_fd(self.env, &fd)
+            _check_rc(rc)
+            return fd
+        ELSE:
+            raise NotImplementedError("Not available on Windows")
 
     def set_map_size(self, size: int) -> None:
         rc = lmdb.mdb_env_set_mapsize(self.env, size)
