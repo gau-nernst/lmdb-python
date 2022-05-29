@@ -201,15 +201,6 @@ cdef class LmdbEnvironment:
         _check_rc(rc)
 
     def copy_fd(self, fd: int) -> None:
-        # IF UNAME_SYSNAME != "Linux" and UNAME_SYSNAME != "Darwin":
-            # rc = lmdb.mdb_env_copyfd(self.env, fd)
-            # _check_rc(rc)
-        # ELSE:
-            # win32_fd = msvcrt.get_osfhandle(fd)
-            # cdef void* c_win32_fd = <void*>win32_fd
-            # rc = lmdb.mdb_env_copyfd(self.env, c_win32_fd)
-            # _check_rc(rc)
-            # raise NotImplementedError("Not available on Windows")
         if os.name == "nt":
             fd = msvcrt.get_osfhandle(fd)
         cdef lmdb.mdb_filehandle_t c_fd = <lmdb.mdb_filehandle_t>fd
@@ -224,14 +215,14 @@ cdef class LmdbEnvironment:
         _check_rc(rc)
     
     def copy_fd2(self, fd: int, compact: bool = False) -> None:
-        IF UNAME_SYSNAME == "Linux" or UNAME_SYSNAME == "Darwin":
-            cdef unsigned int flags = 0
-            if compact:
-                flags |= lmdb.MDB_CP_COMPACT
-            rc = lmdb.mdb_env_copyfd2(self.env, fd, flags)
-            _check_rc(rc)
-        ELSE:
-            raise NotImplementedError("Not available on Windows")
+        if os.name == "nt":
+            fd = msvcrt.get_osfhandle(fd)
+        cdef lmdb.mdb_filehandle_t c_fd = <lmdb.mdb_filehandle_t>fd
+        cdef unsigned int flags = 0
+        if compact:
+            flags |= lmdb.MDB_CP_COMPACT
+        rc = lmdb.mdb_env_copyfd2(self.env, c_fd, flags)
+        _check_rc(rc)
 
     def get_stat(self) -> LmdbStat:
         if self.env is NULL:
@@ -337,13 +328,11 @@ cdef class LmdbEnvironment:
         return py_path.decode()
     
     def get_fd(self) -> int:
-        IF UNAME_SYSNAME == "Linux" or UNAME_SYSNAME == "Darwin":
-            cdef lmdb.mdb_filehandle_t fd
-            rc = lmdb.mdb_env_get_fd(self.env, &fd)
-            _check_rc(rc)
-            return fd
-        ELSE:
-            raise NotImplementedError("Not available on Windows")
+        cdef lmdb.mdb_filehandle_t fd
+        rc = lmdb.mdb_env_get_fd(self.env, &fd)
+        _check_rc(rc)
+        py_fd = msvcrt.open_osfhandle(fd, 0) if os.name == "nt" else fd
+        return py_fd
 
     def set_map_size(self, size: int) -> None:
         rc = lmdb.mdb_env_set_mapsize(self.env, size)
