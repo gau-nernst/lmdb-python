@@ -2,12 +2,13 @@ import ctypes
 import errno
 import os
 from typing import Optional
-if os.name == "nt":
-    import msvcrt
 
 from . cimport lmdb
+IF UNAME_SYSNAME != "Linux" and UNAME_SYSNAME != "Darwin":
+    from . cimport msvcrt
 from ..types import LmdbStat, LmdbEnvInfo, LmdbEnvFlags, LmdbDbFlags
 
+# define symbols
 MDB_VERSION_MAJOR = lmdb.MDB_VERSION_MAJOR
 MDB_VERSION_MINOR = lmdb.MDB_VERSION_MINOR
 MDB_VERSION_PATCH = lmdb.MDB_VERSION_PATCH
@@ -85,6 +86,20 @@ def _flag_is_set(unsigned int flags, unsigned int flag) -> bool:
     return (flags & flag) == flag
 
 
+cdef inline lmdb.mdb_filehandle_t _fd_to_handle(int fd):
+    IF UNAME_SYSNAME == "Linux" or UNAME_SYSNAME == "Darwin":
+        return fd
+    ELSE:
+        return <lmdb.mdb_filehandle_t>msvcrt._get_osfhandle(fd)
+
+
+cdef inline int _handle_to_fd(lmdb.mdb_filehandle_t handle):
+    IF UNAME_SYSNAME == "Linux" or UNAME_SYSNAME == "Darwin":
+        return handle
+    ELSE:
+        return msvcrt._open_osfhandle(<msvcrt.intptr_t>handle, 0)
+
+
 class LmdbException(Exception):
     def __init__(self, rc: int):
         self.rc = rc
@@ -93,14 +108,16 @@ class LmdbException(Exception):
 
 
 def _check_rc(rc: int) -> None:
-    if rc:
-        if rc == errno.ENOMEM:
-            raise MemoryError()
-        if rc > 0:
-            if os.name == "nt":
-                raise ctypes.WinError(rc)
+    if rc == 0:
+        return
+    if rc == errno.ENOMEM:
+        raise MemoryError()
+    if rc > 0:
+        IF UNAME_SYSNAME != "Linux" and UNAME_SYSNAME != "Darwin":
+            raise ctypes.WinError(rc)
+        ELSE:
             raise OSError(rc, os.strerror(rc))
-        raise LmdbException(rc)
+    raise LmdbException(rc)
 
 
 cdef class LmdbEnvironment:
@@ -155,11 +172,7 @@ cdef class LmdbEnvironment:
         _check_rc(rc)
 
     def copy_fd(self, fd: int) -> None:
-        if os.name == "nt":
-            # directly use msvcrt C lib?
-            fd = msvcrt.get_osfhandle(fd)
-        cdef lmdb.mdb_filehandle_t c_fd = <lmdb.mdb_filehandle_t>fd
-        rc = lmdb.mdb_env_copyfd(self.env, c_fd)
+        rc = lmdb.mdb_env_copyfd(self.env, _fd_to_handle(fd))
         _check_rc(rc)
 
     def copy2(self, path: str, compact: bool = False) -> None:
@@ -170,14 +183,10 @@ cdef class LmdbEnvironment:
         _check_rc(rc)
     
     def copy_fd2(self, fd: int, compact: bool = False) -> None:
-        if os.name == "nt":
-            # directly use msvcrt C lib?
-            fd = msvcrt.get_osfhandle(fd)
-        cdef lmdb.mdb_filehandle_t c_fd = <lmdb.mdb_filehandle_t>fd
         cdef unsigned int flags = 0
         if compact:
             flags |= lmdb.MDB_CP_COMPACT
-        rc = lmdb.mdb_env_copyfd2(self.env, c_fd, flags)
+        rc = lmdb.mdb_env_copyfd2(self.env, _fd_to_handle(fd), flags)
         _check_rc(rc)
 
     def get_stat(self) -> LmdbStat:
@@ -287,11 +296,7 @@ cdef class LmdbEnvironment:
         cdef lmdb.mdb_filehandle_t fd
         rc = lmdb.mdb_env_get_fd(self.env, &fd)
         _check_rc(rc)
-        IF UNAME_SYSNAME == "Linux" or UNAME_SYSNAME == "Darwin":
-            return fd
-        ELSE:
-            # directly use msvcrt C lib?
-            return msvcrt.open_osfhandle(<long long>fd, 0)
+        return _handle_to_fd(fd)
 
     def set_map_size(self, size: int) -> None:
         rc = lmdb.mdb_env_set_mapsize(self.env, size)
