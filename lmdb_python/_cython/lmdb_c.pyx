@@ -326,7 +326,7 @@ cdef class LmdbEnvironment:
 cdef class LmdbTransaction:
     cdef lmdb.MDB_txn* txn
 
-    def __cinit__(self, env: LmdbEnvironment, read_only: bool = True):
+    def __cinit__(self, env: LmdbEnvironment, read_only: bool = False):
         cdef unsigned int flags = 0
         if read_only:
             flags |= lmdb.MDB_RDONLY
@@ -336,9 +336,7 @@ cdef class LmdbTransaction:
             _check_rc(rc)
 
     def get_id(self) -> int:
-        if self.txn is not NULL:
-            return lmdb.mdb_txn_id(self.txn)
-        return 0
+        return lmdb.mdb_txn_id(self.txn)
 
     def commit(self) -> None:
         if self.txn is not NULL:
@@ -391,7 +389,8 @@ cdef class LmdbDatabase:
     ):
         cdef char* c_name = NULL
         if name is not None:
-            c_name = name
+            name_bytes = name.encode()
+            c_name = name_bytes
         cdef unsigned int flags = 0
         if reverse_key:
             flags |= lmdb.MDB_REVERSEKEY

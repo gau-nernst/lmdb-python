@@ -44,18 +44,14 @@ def test_error_code(error_code: int):
 
 def test_env_init(tmp_path: pathlib.Path):
     lmdb_c.LmdbEnvironment(str(tmp_path))
+    assert os.path.isfile(tmp_path / "data.mdb")
+    assert os.path.isfile(tmp_path / "lock.mdb")
 
 
 def test_env_init_no_dir_exception(tmp_path: pathlib.Path):
     invalid_tmp_path = tmp_path / "invalid"
     with pytest.raises(FileNotFoundError):
         lmdb_c.LmdbEnvironment(str(invalid_tmp_path))
-
-
-def test_env_init_subdir(tmp_path: pathlib.Path):
-    lmdb_c.LmdbEnvironment(str(tmp_path), no_subdir=False)
-    assert os.path.isfile(tmp_path / "data.mdb")
-    assert os.path.isfile(tmp_path / "lock.mdb")
 
 
 def test_env_init_no_subdir(tmp_path: pathlib.Path):
@@ -65,15 +61,19 @@ def test_env_init_no_subdir(tmp_path: pathlib.Path):
     assert os.path.isfile(env_path + "-lock")
 
 
-@pytest.mark.parametrize("no_subdir", (True, False))
-@pytest.mark.parametrize("read_only", (True, False))
-def test_env_init_read_only(tmp_path: pathlib.Path, no_subdir: bool, read_only: bool):
+def test_env_init_no_lock(tmp_path: pathlib.Path):
+    lmdb_c.LmdbEnvironment(str(tmp_path), no_lock=True)
+    assert os.path.isfile(tmp_path / "data.mdb")
+    assert not os.path.exists(tmp_path / "lock.mdb")
+
+
+def test_env_init_read_only(tmp_path: pathlib.Path):
     # for read-only env, an DB must exist first
     # create a db
-    env_path = str(tmp_path / "test_lmdb") if no_subdir else str(tmp_path)
-    lmdb_c.LmdbEnvironment(env_path, no_subdir=no_subdir)
-    lmdb_c.LmdbEnvironment(env_path, no_subdir=no_subdir, read_only=read_only)
+    lmdb_c.LmdbEnvironment(str(tmp_path))
+    env = lmdb_c.LmdbEnvironment(str(tmp_path), read_only=True)
     # TODO: test for read_only
+    assert env.get_flags().read_only
 
 
 @pytest.fixture
@@ -134,35 +134,28 @@ def test_env_get_max_key_size(lmdb_env: lmdb_c.LmdbEnvironment):
     assert isinstance(max_key_size, int)
 
 
-def test_env_init_map_size(tmp_path: pathlib.Path):
-    map_size = random.randint(10, 1000) * 1024 * 1024  # 10MB - 1GB
+@pytest.mark.parametrize("map_size_mb", (10, 100, 1000))
+def test_env_init_map_size(tmp_path: pathlib.Path, map_size_mb: int):
+    map_size = map_size_mb * 1024 * 1024
     env = lmdb_c.LmdbEnvironment(str(tmp_path), map_size=map_size)
     info = env.get_info()
     assert info.me_mapsize == map_size
 
 
-def test_env_init_max_readers(tmp_path: pathlib.Path):
-    max_readers = random.randint(10, 500)
+@pytest.mark.parametrize("max_readers", (10, 100, 1000))
+def test_env_init_max_readers(tmp_path: pathlib.Path, max_readers: int):
     env = lmdb_c.LmdbEnvironment(str(tmp_path), max_readers=max_readers)
     assert env.get_max_readers() == max_readers
 
 
-def test_env_init_max_dbs(tmp_path: pathlib.Path):
-    max_dbs = random.randint(0, 10)
-    env = lmdb_c.LmdbEnvironment(str(tmp_path), max_dbs=max_dbs)
-    # TODO: add named databases until max_dbs
-
-
 def test_txn_init(lmdb_env: lmdb_c.LmdbEnvironment):
-    txn = lmdb_c.LmdbTransaction(lmdb_env)
-    txn.abort()
+    lmdb_c.LmdbTransaction(lmdb_env)
 
 
 @pytest.mark.parametrize("read_only", (True, False))
 def test_txn_init_read_only(lmdb_env: lmdb_c.LmdbEnvironment, read_only: bool):
-    # TODO: check read_only state
     txn = lmdb_c.LmdbTransaction(lmdb_env, read_only=read_only)
-    txn.abort()
+    # TODO: check read_only state
 
 
 @pytest.fixture
@@ -173,10 +166,54 @@ def make_txn(lmdb_env: lmdb_c.LmdbEnvironment):
     return _make_txn
 
 
-def test_dbi(make_txn: _MakeTxn):
+def test_txn_get_id(make_txn: _MakeTxn):
+    txn = make_txn(read_only=False)
+    txn_id = txn.get_id()
+    assert isinstance(txn_id, int)
+    assert txn_id == 1
+
+
+def test_txn_get_id_invalid(make_txn: _MakeTxn):
+    txn = make_txn(read_only=False)
+    txn.abort()
+    txn_id = txn.get_id()
+    assert isinstance(txn_id, int)
+    assert txn_id == 0
+
+
+def test_dbi_init(make_txn: _MakeTxn):
     txn = make_txn(read_only=True)
     lmdb_c.LmdbDatabase(txn)
+
+
+def test_dbi_init_name(tmp_path):
+    env = lmdb_c.LmdbEnvironment(str(tmp_path), max_dbs=1)
+    txn = lmdb_c.LmdbTransaction(env, read_only=False)
+    lmdb_c.LmdbDatabase(txn, name="database", create=True)
+    txn.commit()
+
+
+def test_dbi_init_name_no_create(tmp_path):
+    env = lmdb_c.LmdbEnvironment(str(tmp_path), max_dbs=1)
+    txn = lmdb_c.LmdbTransaction(env, read_only=False)
+
+    with pytest.raises(lmdb_c.LmdbException) as e:
+        lmdb_c.LmdbDatabase(txn, name="database")
+    assert e.value.rc == lmdb_c.MDB_NOTFOUND
     txn.abort()
+
+
+@pytest.mark.parametrize("max_dbs", (0, 1, 5))
+def test_env_init_max_dbs(tmp_path: pathlib.Path, max_dbs: int):
+    env = lmdb_c.LmdbEnvironment(str(tmp_path), max_dbs=max_dbs)
+    txn = lmdb_c.LmdbTransaction(env, read_only=False)
+
+    for i in range(max_dbs):
+        lmdb_c.LmdbDatabase(txn, name=f"db_{i}", create=True)
+    with pytest.raises(lmdb_c.LmdbException) as e:
+        lmdb_c.LmdbDatabase(txn, name=f"db_{max_dbs}", create=True)
+    assert e.value.rc == lmdb_c.MDB_DBS_FULL
+    txn.commit()
 
 
 def test_data_empty():
