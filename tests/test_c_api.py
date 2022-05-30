@@ -1,8 +1,10 @@
 import os
 import pathlib
 import pickle
+import random
 from typing import Any, Callable, Iterable, Tuple
 
+import lmdb_python.types
 import pytest
 from lmdb_python._cython import lmdb_c
 
@@ -81,31 +83,74 @@ def lmdb_env(tmp_path: pathlib.Path):
 
 def test_env_get_stat(lmdb_env: lmdb_c.LmdbEnvironment):
     stats = lmdb_env.get_stat()
-    for stat_name in [
-        "ms_psize",
-        "ms_depth",
-        "ms_branch_pages",
-        "ms_leaf_pages",
-        "ms_overflow_pages",
-        "ms_entries"
-    ]:
-        assert hasattr(stats, stat_name)
-        current_stat = getattr(stats, stat_name)
-        assert isinstance(current_stat, int)
+    assert isinstance(stats, lmdb_python.types.LmdbStat)
+    for s in stats:
+        assert isinstance(s, int)
 
 
 def test_env_get_info(lmdb_env: lmdb_c.LmdbEnvironment):
     info = lmdb_env.get_info()
-    for info_name in [
-        "me_mapsize",
-        "me_last_pgno",
-        "me_last_txnid",
-        "me_maxreaders",
-        "me_numreaders",
-    ]:
-        assert hasattr(info, info_name)
-        current_info = getattr(info, info_name)
-        assert isinstance(current_info, int)
+    assert isinstance(info, lmdb_python.types.LmdbEnvInfo)
+    for i in info:
+        assert isinstance(i, int)
+
+
+def test_env_get_flags(lmdb_env: lmdb_c.LmdbEnvironment):
+    flags = lmdb_env.get_flags()
+    assert isinstance(flags, lmdb_python.types.LmdbEnvFlags)
+    for f in flags:
+        assert isinstance(f, bool)
+
+
+def test_env_get_path(lmdb_env: lmdb_c.LmdbEnvironment):
+    path = lmdb_env.get_path()
+    assert isinstance(path, str)
+    assert os.path.exists(path)
+
+
+def test_env_get_fd(lmdb_env: lmdb_c.LmdbEnvironment):
+    fd = lmdb_env.get_fd()
+    assert isinstance(fd, int)
+    os.fdopen(fd)
+    # TODO: try to do something with the file obbject
+
+
+def test_env_set_map_size(lmdb_env: lmdb_c.LmdbEnvironment):
+    new_map_size = random.randint(10, 1000) * 1024 * 1024  # 10MB - 1GB
+    lmdb_env.set_map_size(new_map_size)
+    info = lmdb_env.get_info()
+    assert info.me_mapsize == new_map_size
+
+
+def test_env_get_max_readers(lmdb_env: lmdb_c.LmdbEnvironment):
+    max_readers = lmdb_env.get_max_readers()
+    assert isinstance(max_readers, int)
+    info = lmdb_env.get_info()
+    assert info.me_maxreaders == max_readers
+
+
+def test_env_get_max_key_size(lmdb_env: lmdb_c.LmdbEnvironment):
+    max_key_size = lmdb_env.get_max_key_size()
+    assert isinstance(max_key_size, int)
+
+
+def test_env_init_map_size(tmp_path: pathlib.Path):
+    map_size = random.randint(10, 1000) * 1024 * 1024  # 10MB - 1GB
+    env = lmdb_c.LmdbEnvironment(str(tmp_path), map_size=map_size)
+    info = env.get_info()
+    assert info.me_mapsize == map_size
+
+
+def test_env_init_max_readers(tmp_path: pathlib.Path):
+    max_readers = random.randint(10, 500)
+    env = lmdb_c.LmdbEnvironment(str(tmp_path), max_readers=max_readers)
+    assert env.get_max_readers() == max_readers
+
+
+def test_env_init_max_dbs(tmp_path: pathlib.Path):
+    max_dbs = random.randint(0, 10)
+    env = lmdb_c.LmdbEnvironment(str(tmp_path), max_dbs=max_dbs)
+    # TODO: add named databases until max_dbs
 
 
 def test_txn_init(lmdb_env: lmdb_c.LmdbEnvironment):

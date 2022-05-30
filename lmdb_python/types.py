@@ -2,26 +2,29 @@ from collections import namedtuple
 
 
 LmdbStat = namedtuple(
-    "LmdbStat", [
+    "LmdbStat",
+    [
         "ms_psize",
         "ms_depth",
         "ms_branch_pages",
         "ms_leaf_pages",
         "ms_overflow_pages",
         "ms_entries",
-    ]
+    ],
 )
 LmdbEnvInfo = namedtuple(
-    "LmdbEnvInfo", [
+    "LmdbEnvInfo",
+    [
         "me_mapsize",
         "me_last_pgno",
         "me_last_txnid",
         "me_maxreaders",
         "me_numreaders",
-    ]
+    ],
 )
 LmdbEnvFlags = namedtuple(
-    "LmdbEnvFlags", [
+    "LmdbEnvFlags",
+    [
         "fixed_map",
         "no_subdir",
         "read_only",
@@ -33,10 +36,11 @@ LmdbEnvFlags = namedtuple(
         "no_lock",
         "no_readahead",
         "no_meminit",
-    ]
+    ],
 )
 LmdbDbFlags = namedtuple(
-    "LmdbDbFlags", [
+    "LmdbDbFlags",
+    [
         "reverse_key",
         "duplicate_sort",
         "integer_key",
@@ -44,5 +48,5 @@ LmdbDbFlags = namedtuple(
         "integer_duplicate",
         "reverse_duplicate",
         "creat",
-    ]
+    ],
 )

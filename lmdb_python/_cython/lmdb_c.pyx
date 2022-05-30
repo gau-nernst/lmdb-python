@@ -146,9 +146,15 @@ cdef class LmdbEnvironment:
             self.close()
             _check_rc(rc)
         self.set_map_size(map_size)
-        self.set_max_readers(max_readers)
+
+        # This function may only be called after
+        # mdb_env_create() and before mdb_env_open()
+        rc = lmdb.mdb_env_set_maxreaders(self.env, max_readers)
+        _check_rc(rc)
         if max_dbs > 0:
-            self.set_max_dbs(max_dbs)
+            rc = lmdb.mdb_env_set_maxdbs(self.env, max_dbs)
+            _check_rc(rc)
+
         cdef unsigned int flags = _env_flags_to_int(
             fixed_map,
             no_subdir,
@@ -302,20 +308,11 @@ cdef class LmdbEnvironment:
         rc = lmdb.mdb_env_set_mapsize(self.env, size)
         _check_rc(rc)
 
-    def set_max_readers(self, readers: int) -> None:
-        rc = lmdb.mdb_env_set_maxreaders(self.env, readers)
-        _check_rc(rc)
-
     def get_max_readers(self) -> int:
         cdef unsigned int readers
         rc = lmdb.mdb_env_get_maxreaders(self.env, &readers)
         _check_rc(rc)
-        py_readers = readers
-        return py_readers
-
-    def set_max_dbs(self, dbs: int) -> None:
-        rc = lmdb.mdb_env_set_maxdbs(self.env, dbs)
-        _check_rc(rc)
+        return readers
 
     def get_max_key_size(self) -> int:
         return lmdb.mdb_env_get_maxkeysize(self.env)
