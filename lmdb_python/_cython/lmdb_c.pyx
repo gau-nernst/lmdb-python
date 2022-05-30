@@ -1,12 +1,12 @@
 import ctypes
 import errno
 import os
-from collections import namedtuple
-from typing import Dict, Optional
+from typing import Optional
 if os.name == "nt":
     import msvcrt
 
-cimport lmdb_python._cython.lmdb as lmdb
+from . cimport lmdb
+from ..types import LmdbStat, LmdbEnvInfo, LmdbEnvFlags, LmdbDbFlags
 
 MDB_VERSION_MAJOR = lmdb.MDB_VERSION_MAJOR
 MDB_VERSION_MINOR = lmdb.MDB_VERSION_MINOR
@@ -32,52 +32,6 @@ MDB_BAD_RSLOT = lmdb.MDB_BAD_RSLOT
 MDB_BAD_TXN = lmdb.MDB_BAD_TXN
 MDB_BAD_VALSIZE = lmdb.MDB_BAD_VALSIZE
 MDB_BAD_DBI = lmdb.MDB_BAD_DBI
-
-LmdbStat = namedtuple(
-    "LmdbStat", [
-        "ms_psize",
-        "ms_depth",
-        "ms_branch_pages",
-        "ms_leaf_pages",
-        "ms_overflow_pages",
-        "ms_entries",
-    ]
-)
-LmdbEnvInfo = namedtuple(
-    "LmdbEnvInfo", [
-        "me_mapsize",
-        "me_last_pgno",
-        "me_last_txnid",
-        "me_maxreaders",
-        "me_numreaders",
-    ]
-)
-LmdbEnvFlags = namedtuple(
-    "LmdbEnvFlags", [
-        "fixed_map",
-        "no_subdir",
-        "read_only",
-        "write_map",
-        "no_meta_sync",
-        "no_sync",
-        "map_async",
-        "no_tls",
-        "no_lock",
-        "no_readahead",
-        "no_meminit",
-    ]
-)
-LmdbDbFlags = namedtuple(
-    "LmdbDbFlags", [
-        "reverse_key",
-        "duplicate_sort",
-        "integer_key",
-        "duplicate_fixed",
-        "integer_duplicate",
-        "reverse_duplicate",
-        "creat",
-    ]
-)
 
 
 def version() -> str:
@@ -202,6 +156,7 @@ cdef class LmdbEnvironment:
 
     def copy_fd(self, fd: int) -> None:
         if os.name == "nt":
+            # directly use msvcrt C lib?
             fd = msvcrt.get_osfhandle(fd)
         cdef lmdb.mdb_filehandle_t c_fd = <lmdb.mdb_filehandle_t>fd
         rc = lmdb.mdb_env_copyfd(self.env, c_fd)
@@ -216,6 +171,7 @@ cdef class LmdbEnvironment:
     
     def copy_fd2(self, fd: int, compact: bool = False) -> None:
         if os.name == "nt":
+            # directly use msvcrt C lib?
             fd = msvcrt.get_osfhandle(fd)
         cdef lmdb.mdb_filehandle_t c_fd = <lmdb.mdb_filehandle_t>fd
         cdef unsigned int flags = 0
@@ -334,6 +290,7 @@ cdef class LmdbEnvironment:
         IF UNAME_SYSNAME == "Linux" or UNAME_SYSNAME == "Darwin":
             return fd
         ELSE:
+            # directly use msvcrt C lib?
             return msvcrt.open_osfhandle(<long long>fd, 0)
 
     def set_map_size(self, size: int) -> None:
