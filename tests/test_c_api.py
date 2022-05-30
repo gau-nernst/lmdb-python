@@ -68,69 +68,17 @@ def test_env_init_no_lock(tmp_path: pathlib.Path):
 
 
 def test_env_init_read_only(tmp_path: pathlib.Path):
-    # for read-only env, an DB must exist first
-    # create a db
+    # for read-only env, a DB must exist first
     lmdb_c.LmdbEnvironment(str(tmp_path))
     env = lmdb_c.LmdbEnvironment(str(tmp_path), read_only=True)
-    # TODO: test for read_only
     assert env.get_flags().read_only
+    with pytest.raises(PermissionError):
+        lmdb_c.LmdbTransaction(env, read_only=False)
 
 
 @pytest.fixture
 def lmdb_env(tmp_path: pathlib.Path):
     return lmdb_c.LmdbEnvironment(str(tmp_path))
-
-
-def test_env_copy(lmdb_env, tmp_path):
-    copied_path = tmp_path / "new_folder"
-    os.makedirs(copied_path)
-    lmdb_env.copy(str(copied_path))
-    assert os.path.isfile(tmp_path / "data.mdb")
-    assert os.path.exists(tmp_path / "lock.mdb")
-
-
-def test_env_copy_fd(lmdb_env, tmp_path):
-    copied_path = tmp_path / "copied.mdb"
-    f = open(copied_path, "wb")
-    lmdb_env.copy_fd(f.fileno())
-    f.close()
-    lmdb_c.LmdbEnvironment(str(copied_path), read_only=True, no_subdir=True)
-
-
-def test_env_copy2(lmdb_env, tmp_path):
-    copied_path = tmp_path / "new_folder"
-    os.makedirs(copied_path)
-    lmdb_env.copy2(str(copied_path))
-    assert os.path.isfile(tmp_path / "data.mdb")
-    assert os.path.exists(tmp_path / "lock.mdb")
-
-
-def test_env_copy2_compact(lmdb_env, tmp_path):
-    copied_path = tmp_path / "new_folder"
-    os.makedirs(copied_path)
-    lmdb_env.copy2(str(copied_path), compact=True)
-    assert os.path.isfile(tmp_path / "data.mdb")
-    assert os.path.exists(tmp_path / "lock.mdb")
-    # TODO: add some data, remove some data,
-    # check the copied file is smaller
-
-
-def test_env_copy_fd2(lmdb_env, tmp_path):
-    copied_path = tmp_path / "copied.mdb"
-    f = open(copied_path, "wb")
-    lmdb_env.copy_fd2(f.fileno())
-    f.close()
-    lmdb_c.LmdbEnvironment(str(copied_path), read_only=True, no_subdir=True)
-
-
-def test_env_copy_fd2_compact(lmdb_env, tmp_path):
-    copied_path = tmp_path / "copied.mdb"
-    f = open(copied_path, "wb")
-    lmdb_env.copy_fd2(f.fileno(), compact=True)
-    f.close()
-    lmdb_c.LmdbEnvironment(str(copied_path), read_only=True, no_subdir=True)
-    # TODO: add some data, remove some data,
-    # check the copied file is smaller
 
 
 def test_env_get_stat(lmdb_env: lmdb_c.LmdbEnvironment):
@@ -204,10 +152,12 @@ def test_txn_init(lmdb_env: lmdb_c.LmdbEnvironment):
     lmdb_c.LmdbTransaction(lmdb_env)
 
 
-@pytest.mark.parametrize("read_only", (True, False))
-def test_txn_init_read_only(lmdb_env: lmdb_c.LmdbEnvironment, read_only: bool):
-    txn = lmdb_c.LmdbTransaction(lmdb_env, read_only=read_only)
-    # TODO: check read_only state
+def test_txn_init_read_only(lmdb_env: lmdb_c.LmdbEnvironment):
+    txn = lmdb_c.LmdbTransaction(lmdb_env, read_only=True)
+    dbi = lmdb_c.LmdbDatabase(txn)
+    with pytest.raises(PermissionError):
+        dbi.put(b"key", b"value", txn)
+    txn.abort()
 
 
 @pytest.fixture
@@ -307,7 +257,6 @@ def make_dbi_with_data(make_txn: _MakeTxn):
     def _make_dbi_with_data(data: Iterable[_KeyValue]):
         txn = make_txn(read_only=False)
         dbi = lmdb_c.LmdbDatabase(txn)
-
         for key, value in data:
             dbi.put(key, value, txn)
         txn.commit()
@@ -407,25 +356,77 @@ def test_delete(
     txn.abort()
 
 
-def test_put_multithreading():
-    pass
+def _test_data_is_present(env, samples):
+    txn = lmdb_c.LmdbTransaction(env, read_only=True)
+    dbi = lmdb_c.LmdbDatabase(txn)
+    for k, v in samples:
+        assert dbi.get(k, txn) == v
 
 
-def test_put_multiprocessing():
-    pass
+@pytest.mark.parametrize("method", ("copy", "copy2"))
+def test_env_copy(lmdb_env, make_dbi_with_data, tmp_path, method):
+    make_dbi_with_data(_key_value_samples)
+    copied_path = tmp_path / "new_folder"
+    os.makedirs(copied_path)
+    getattr(lmdb_env, method)(str(copied_path))
+    assert os.path.isfile(copied_path / "data.mdb")
+
+    original_size = os.stat(tmp_path / "data.mdb").st_size
+    copied_size = os.stat(copied_path / "data.mdb").st_size
+    assert original_size == copied_size
+
+    copied_env = lmdb_c.LmdbEnvironment(str(copied_path), read_only=True)
+    _test_data_is_present(copied_env, _key_value_samples)
 
 
-def test_get_multithreading():
-    pass
+@pytest.mark.parametrize("method", ("copy_fd", "copy_fd2"))
+def test_env_copy_fd(lmdb_env, make_dbi_with_data, tmp_path, method):
+    make_dbi_with_data(_key_value_samples)
+    copied_path = tmp_path / "copied.mdb"
+    f = open(copied_path, "wb")
+    getattr(lmdb_env, method)(f.fileno())
+    f.close()
+
+    original_size = os.stat(tmp_path / "data.mdb").st_size
+    copied_size = os.stat(copied_path).st_size
+    assert original_size == copied_size
+
+    copied_env = lmdb_c.LmdbEnvironment(str(copied_path), read_only=True, no_subdir=True)
+    _test_data_is_present(copied_env, _key_value_samples)
 
 
-def test_get_multiprocessing():
-    pass
+def test_env_copy2_compact(lmdb_env, make_txn, make_dbi_with_data, tmp_path):
+    dbi = make_dbi_with_data(_key_value_samples)
+    # txn = make_txn(read_only=False)
+    # for k in _key_samples:
+    #     dbi.delete(k, txn)
+    # txn.commit()
+
+    copied_path = tmp_path / "new_folder"
+    os.makedirs(copied_path)
+    lmdb_env.copy2(str(copied_path), compact=True)
+    assert os.path.isfile(copied_path / "data.mdb")
+
+    # TODO: add some data, remove some data,
+    # check the copied file is smaller
+    original_size = os.stat(tmp_path / "data.mdb").st_size
+    copied_size = os.stat(copied_path / "data.mdb").st_size
+    assert original_size == copied_size
+
+    copied_env = lmdb_c.LmdbEnvironment(str(copied_path), read_only=True)
+    _test_data_is_present(copied_env, _key_value_samples)
 
 
-def test_delete_multithreading():
-    pass
+def test_env_copy_fd2_compact(lmdb_env, make_txn, make_dbi_with_data, tmp_path):
+    make_dbi_with_data(_key_value_samples)
+    copied_path = tmp_path / "copied.mdb"
+    f = open(copied_path, "wb")
+    lmdb_env.copy_fd2(f.fileno(), compact=True)
+    f.close()
 
+    original_size = os.stat(tmp_path / "data.mdb").st_size
+    copied_size = os.stat(copied_path).st_size
+    assert original_size == copied_size
 
-def test_delete_multithreading():
-    pass
+    copied_env = lmdb_c.LmdbEnvironment(str(copied_path), read_only=True, no_subdir=True)
+    _test_data_is_present(copied_env, _key_value_samples)
