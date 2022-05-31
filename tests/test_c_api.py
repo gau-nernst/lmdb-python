@@ -72,7 +72,7 @@ def test_env_init_read_only(tmp_path: pathlib.Path):
     lmdb_c.LmdbEnvironment(str(tmp_path))
     env = lmdb_c.LmdbEnvironment(str(tmp_path), read_only=True)
     assert env.get_flags().read_only
-    with pytest.raises(PermissionError):
+    with pytest.raises((PermissionError, WindowsError)):
         lmdb_c.LmdbTransaction(env, read_only=False)
 
 
@@ -400,38 +400,35 @@ def test_env_copy_fd(lmdb_env, make_dbi_with_data, tmp_path, method):
 
 def test_env_copy2_compact(lmdb_env, make_txn, make_dbi_with_data, tmp_path):
     dbi = make_dbi_with_data(_key_value_samples)
-    # txn = make_txn(read_only=False)
-    # for k in _key_samples:
-    #     dbi.delete(k, txn)
-    # txn.commit()
+    txn = make_txn(read_only=False)
+    for k in _key_samples:
+        dbi.delete(k, txn)
+    txn.commit()
 
     copied_path = tmp_path / "new_folder"
     os.makedirs(copied_path)
     lmdb_env.copy2(str(copied_path), compact=True)
     assert os.path.isfile(copied_path / "data.mdb")
 
-    # TODO: add some data, remove some data,
-    # check the copied file is smaller
-    if os.name != "nt":
-        original_size = os.stat(tmp_path / "data.mdb").st_size
-        copied_size = os.stat(copied_path / "data.mdb").st_size
-        assert original_size == copied_size
-
-    copied_env = lmdb_c.LmdbEnvironment(str(copied_path), read_only=True)
-    _test_data_is_present(copied_env, _key_value_samples)
+    lmdb_c.LmdbEnvironment(str(copied_path), read_only=True)
+    original_size = os.stat(tmp_path / "data.mdb").st_size
+    copied_size = os.stat(copied_path / "data.mdb").st_size
+    assert copied_size < original_size
 
 
 def test_env_copy_fd2_compact(lmdb_env, make_txn, make_dbi_with_data, tmp_path):
-    make_dbi_with_data(_key_value_samples)
+    dbi = make_dbi_with_data(_key_value_samples)
+    txn = make_txn(read_only=False)
+    for k in _key_samples:
+        dbi.delete(k, txn)
+    txn.commit()
+
     copied_path = tmp_path / "copied.mdb"
     f = open(copied_path, "wb")
     lmdb_env.copy_fd2(f.fileno(), compact=True)
     f.close()
 
-    if os.name != "nt":
-        original_size = os.stat(tmp_path / "data.mdb").st_size
-        copied_size = os.stat(copied_path).st_size
-        assert original_size == copied_size
-
-    copied_env = lmdb_c.LmdbEnvironment(str(copied_path), read_only=True, no_subdir=True)
-    _test_data_is_present(copied_env, _key_value_samples)
+    lmdb_c.LmdbEnvironment(str(copied_path), read_only=True, no_subdir=True)
+    original_size = os.stat(tmp_path / "data.mdb").st_size
+    copied_size = os.stat(copied_path).st_size
+    assert copied_size < original_size
