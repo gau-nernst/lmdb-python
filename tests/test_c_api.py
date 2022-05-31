@@ -72,7 +72,7 @@ def test_env_init_read_only(tmp_path: pathlib.Path):
     lmdb_c.LmdbEnvironment(str(tmp_path))
     env = lmdb_c.LmdbEnvironment(str(tmp_path), read_only=True)
     assert env.get_flags().read_only
-    with pytest.raises((PermissionError, WindowsError)):
+    with pytest.raises((PermissionError, OSError)):
         lmdb_c.LmdbTransaction(env, read_only=False)
 
 
@@ -156,7 +156,7 @@ def test_txn_init(lmdb_env: lmdb_c.LmdbEnvironment):
 def test_txn_init_read_only(lmdb_env: lmdb_c.LmdbEnvironment):
     txn = lmdb_c.LmdbTransaction(lmdb_env, read_only=True)
     dbi = lmdb_c.LmdbDatabase(txn)
-    with pytest.raises(PermissionError):
+    with pytest.raises((PermissionError, OSError)):
         dbi.put(b"key", b"value", txn)
     txn.abort()
 
