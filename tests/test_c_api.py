@@ -115,8 +115,9 @@ def test_env_get_fd(lmdb_env: lmdb_c.LmdbEnvironment):
     # TODO: try to do something with the file obbject
 
 
-def test_env_set_map_size(lmdb_env: lmdb_c.LmdbEnvironment):
-    new_map_size = random.randint(10, 1000) * 1024 * 1024  # 10MB - 1GB
+@pytest.mark.parametrize("map_size_mb", (10, 100, 1000))
+def test_env_set_map_size(lmdb_env: lmdb_c.LmdbEnvironment, map_size_mb):
+    new_map_size = map_size_mb * 1024 * 1024
     lmdb_env.set_map_size(new_map_size)
     info = lmdb_env.get_info()
     assert info.me_mapsize == new_map_size
@@ -371,9 +372,10 @@ def test_env_copy(lmdb_env, make_dbi_with_data, tmp_path, method):
     getattr(lmdb_env, method)(str(copied_path))
     assert os.path.isfile(copied_path / "data.mdb")
 
-    original_size = os.stat(tmp_path / "data.mdb").st_size
-    copied_size = os.stat(copied_path / "data.mdb").st_size
-    assert original_size == copied_size
+    if os.uname() != "nt":
+        original_size = os.stat(tmp_path / "data.mdb").st_size
+        copied_size = os.stat(copied_path / "data.mdb").st_size
+        assert original_size == copied_size
 
     copied_env = lmdb_c.LmdbEnvironment(str(copied_path), read_only=True)
     _test_data_is_present(copied_env, _key_value_samples)
@@ -387,9 +389,10 @@ def test_env_copy_fd(lmdb_env, make_dbi_with_data, tmp_path, method):
     getattr(lmdb_env, method)(f.fileno())
     f.close()
 
-    original_size = os.stat(tmp_path / "data.mdb").st_size
-    copied_size = os.stat(copied_path).st_size
-    assert original_size == copied_size
+    if os.uname() != "nt":
+        original_size = os.stat(tmp_path / "data.mdb").st_size
+        copied_size = os.stat(copied_path).st_size
+        assert original_size == copied_size
 
     copied_env = lmdb_c.LmdbEnvironment(str(copied_path), read_only=True, no_subdir=True)
     _test_data_is_present(copied_env, _key_value_samples)
@@ -409,9 +412,10 @@ def test_env_copy2_compact(lmdb_env, make_txn, make_dbi_with_data, tmp_path):
 
     # TODO: add some data, remove some data,
     # check the copied file is smaller
-    original_size = os.stat(tmp_path / "data.mdb").st_size
-    copied_size = os.stat(copied_path / "data.mdb").st_size
-    assert original_size == copied_size
+    if os.uname() != "nt":
+        original_size = os.stat(tmp_path / "data.mdb").st_size
+        copied_size = os.stat(copied_path / "data.mdb").st_size
+        assert original_size == copied_size
 
     copied_env = lmdb_c.LmdbEnvironment(str(copied_path), read_only=True)
     _test_data_is_present(copied_env, _key_value_samples)
@@ -424,9 +428,10 @@ def test_env_copy_fd2_compact(lmdb_env, make_txn, make_dbi_with_data, tmp_path):
     lmdb_env.copy_fd2(f.fileno(), compact=True)
     f.close()
 
-    original_size = os.stat(tmp_path / "data.mdb").st_size
-    copied_size = os.stat(copied_path).st_size
-    assert original_size == copied_size
+    if os.uname() != "nt":
+        original_size = os.stat(tmp_path / "data.mdb").st_size
+        copied_size = os.stat(copied_path).st_size
+        assert original_size == copied_size
 
     copied_env = lmdb_c.LmdbEnvironment(str(copied_path), read_only=True, no_subdir=True)
     _test_data_is_present(copied_env, _key_value_samples)
