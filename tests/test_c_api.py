@@ -372,7 +372,7 @@ def test_env_copy(lmdb_env, make_dbi_with_data, tmp_path, method):
     getattr(lmdb_env, method)(str(copied_path))
     assert os.path.isfile(copied_path / "data.mdb")
 
-    if os.uname() != "nt":
+    if os.name != "nt":
         original_size = os.stat(tmp_path / "data.mdb").st_size
         copied_size = os.stat(copied_path / "data.mdb").st_size
         assert original_size == copied_size
@@ -389,7 +389,7 @@ def test_env_copy_fd(lmdb_env, make_dbi_with_data, tmp_path, method):
     getattr(lmdb_env, method)(f.fileno())
     f.close()
 
-    if os.uname() != "nt":
+    if os.name != "nt":
         original_size = os.stat(tmp_path / "data.mdb").st_size
         copied_size = os.stat(copied_path).st_size
         assert original_size == copied_size
@@ -412,7 +412,7 @@ def test_env_copy2_compact(lmdb_env, make_txn, make_dbi_with_data, tmp_path):
 
     # TODO: add some data, remove some data,
     # check the copied file is smaller
-    if os.uname() != "nt":
+    if os.name != "nt":
         original_size = os.stat(tmp_path / "data.mdb").st_size
         copied_size = os.stat(copied_path / "data.mdb").st_size
         assert original_size == copied_size
@@ -428,7 +428,7 @@ def test_env_copy_fd2_compact(lmdb_env, make_txn, make_dbi_with_data, tmp_path):
     lmdb_env.copy_fd2(f.fileno(), compact=True)
     f.close()
 
-    if os.uname() != "nt":
+    if os.name != "nt":
         original_size = os.stat(tmp_path / "data.mdb").st_size
         copied_size = os.stat(copied_path).st_size
         assert original_size == copied_size
