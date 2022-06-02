@@ -1,7 +1,8 @@
 import os
 import pathlib
 import pickle
-import random
+import threading
+import time
 from typing import Any, Callable, Iterable, Tuple
 
 import lmdb_python.types
@@ -143,10 +144,29 @@ def test_env_init_map_size(tmp_path: pathlib.Path, map_size_mb: int):
     assert info.me_mapsize == map_size
 
 
-@pytest.mark.parametrize("max_readers", (10, 100, 1000))
+@pytest.mark.parametrize("max_readers", (10, 100))
 def test_env_init_max_readers(tmp_path: pathlib.Path, max_readers: int):
-    env = lmdb_c.LmdbEnvironment(str(tmp_path), max_readers=max_readers)
+    lmdb_c.LmdbEnvironment(str(tmp_path), max_readers=max_readers)
+    env = lmdb_c.LmdbEnvironment(str(tmp_path), max_readers=max_readers, read_only=True)
     assert env.get_max_readers() == max_readers
+
+    def target(i):
+        if i >= max_readers:
+            with pytest.raises(lmdb_c.LmdbException) as e:
+                txn = lmdb_c.LmdbTransaction(env, read_only=True)
+            assert e.value.rc == lmdb_c.MDB_READERS_FULL
+        else:
+            txn = lmdb_c.LmdbTransaction(env, read_only=True)
+            time.sleep(2)
+            txn.abort()
+
+    threads = [
+        threading.Thread(target=target, args=(i,)) for i in range(max_readers + 1)
+    ]
+    for th in threads:
+        th.start()
+    for th in threads:
+        th.join()
 
 
 def test_txn_init(lmdb_env: lmdb_c.LmdbEnvironment):
@@ -394,7 +414,9 @@ def test_env_copy_fd(lmdb_env, make_dbi_with_data, tmp_path, method):
         copied_size = os.stat(copied_path).st_size
         assert original_size == copied_size
 
-    copied_env = lmdb_c.LmdbEnvironment(str(copied_path), read_only=True, no_subdir=True)
+    copied_env = lmdb_c.LmdbEnvironment(
+        str(copied_path), read_only=True, no_subdir=True
+    )
     _test_data_is_present(copied_env, _key_value_samples)
 
 
