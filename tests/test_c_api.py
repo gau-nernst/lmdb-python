@@ -146,8 +146,7 @@ def test_env_init_map_size(tmp_path: pathlib.Path, map_size_mb: int):
 
 @pytest.mark.parametrize("max_readers", (10, 100))
 def test_env_init_max_readers(tmp_path: pathlib.Path, max_readers: int):
-    lmdb_c.LmdbEnvironment(str(tmp_path), max_readers=max_readers)
-    env = lmdb_c.LmdbEnvironment(str(tmp_path), max_readers=max_readers, read_only=True)
+    env = lmdb_c.LmdbEnvironment(str(tmp_path), max_readers=max_readers)
     assert env.get_max_readers() == max_readers
 
     def target(i):
