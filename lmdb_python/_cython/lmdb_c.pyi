@@ -1,5 +1,6 @@
-from collections import namedtuple
 from typing import Optional
+
+from ..types import LmdbDbFlags, LmdbEnvFlags, LmdbEnvInfo, LmdbStat
 
 MDB_VERSION_MAJOR: int
 MDB_VERSION_MINOR: int
@@ -26,69 +27,64 @@ MDB_BAD_TXN: int
 MDB_BAD_VALSIZE: int
 MDB_BAD_DBI: int
 
-LmdbStat = namedtuple(
-    "LmdbStat",
-    [
-        "ms_psize",
-        "ms_depth",
-        "ms_branch_pages",
-        "ms_leaf_pages",
-        "ms_overflow_pages",
-        "ms_entries",
-    ],
-)
-LmdbEnvInfo = namedtuple(
-    "LmdbEnvInfo",
-    [
-        "me_mapsize",
-        "me_last_pgno",
-        "me_last_txnid",
-        "me_maxreaders",
-        "me_numreaders",
-    ],
-)
-LmdbEnvFlags = namedtuple(
-    "LmdbEnvFlags",
-    [
-        "fixed_map",
-        "no_subdir",
-        "read_only",
-        "write_map",
-        "no_meta_sync",
-        "no_sync",
-        "map_async",
-        "no_tls",
-        "no_lock",
-        "no_readahead",
-        "no_meminit",
-    ],
-)
-LmdbDbFlags = namedtuple(
-    "LmdbDbFlags",
-    [
-        "reverse_key",
-        "duplicate_sort",
-        "integer_key",
-        "duplicate_fixed",
-        "integer_duplicate",
-        "reverse_duplicate",
-        "creat",
-    ],
-)
-
+def version() -> str: ...
 def strerror(err: int) -> str: ...
 
 class LmdbException(Exception):
     rc: int
 
 class LmdbEnvironment:
-    def __init__(self, path: str, no_subdir: bool = False, read_only: bool = False): ...
+    def __init__(
+        self,
+        path: str,
+        map_size: int = 10 * 1024 * 1024,
+        max_readers: int = 126,
+        max_dbs: int = 0,
+        fixed_map: bool = False,
+        no_subdir: bool = False,
+        no_sync: bool = False,
+        read_only: bool = False,
+        no_meta_sync: bool = False,
+        write_map: bool = False,
+        map_async: bool = False,
+        no_tls: bool = False,
+        no_lock: bool = False,
+        no_readahead: bool = False,
+        no_meminit: bool = False,
+    ): ...
+    def copy(self, path: str) -> None: ...
+    def copy_fd(self, fd: int) -> None: ...
+    def copy2(self, path: str, compact: bool = False) -> None: ...
+    def copy_fd2(self, fd: int, compact: bool = False) -> None: ...
     def get_stat(self) -> LmdbStat: ...
     def get_info(self) -> LmdbEnvInfo: ...
+    def sync(self, force: bool) -> None: ...
     def close(self) -> None: ...
+    def set_flags(
+        self,
+        fixed_map: bool = False,
+        no_subdir: bool = False,
+        no_sync: bool = False,
+        read_only: bool = False,
+        no_meta_sync: bool = False,
+        write_map: bool = False,
+        map_async: bool = False,
+        no_tls: bool = False,
+        no_lock: bool = False,
+        no_readahead: bool = False,
+        no_meminit: bool = False,
+        unset: bool = False,
+    ) -> None: ...
+    def get_flags(self) -> LmdbEnvFlags: ...
+    def get_path(self) -> str: ...
+    def get_fd(self) -> int: ...
+    def set_map_size(self, size: int) -> None: ...
+    def get_max_readers(self) -> int: ...
+    def get_max_key_size(self) -> int: ...
 
 class LmdbTransaction:
-    def __init__(self, env: LmdbEnvironment, read_only: bool = True): ...
+    def __init__(self, env: LmdbEnvironment, read_only: bool = False): ...
+    def get_id(self) -> int: ...
     def commit(self) -> None: ...
     def abort(self) -> None: ...
 
@@ -97,7 +93,34 @@ class _LmdbData:
     def to_bytes(self) -> Optional[bytes]: ...
 
 class LmdbDatabase:
-    def __init__(self, txn: LmdbTransaction): ...
-    def put(self, key: bytes, value: bytes, txn: LmdbTransaction) -> None: ...
+    def __init__(
+        self,
+        txn: LmdbTransaction,
+        name: Optional[str] = None,
+        reverse_key: bool = False,
+        duplicate_sort: bool = False,
+        integer_key: bool = False,
+        duplicate_fixed: bool = False,
+        integer_duplicate: bool = False,
+        reverse_duplicate: bool = False,
+        create: bool = False,
+    ): ...
+    def get_stat(self, txn: LmdbTransaction) -> LmdbStat: ...
+    def get_flags(self, txn: LmdbTransaction) -> LmdbDbFlags: ...
+    def empty_db(self, txn: LmdbTransaction) -> None: ...
+    def delete_db(self, txn: LmdbTransaction) -> None: ...
     def get(self, key: bytes, txn: LmdbTransaction) -> bytes: ...
+    def put(
+        self,
+        key: bytes,
+        value: bytes,
+        txn: LmdbTransaction,
+        no_overwrite: bool = False,
+        no_duplicate: bool = False,
+        current: bool = False,
+        reserve: bool = False,
+        append: bool = False,
+        append_duplicate: bool = False,
+        multiple: bool = False,
+    ) -> None: ...
     def delete(self, key: bytes, txn: LmdbTransaction) -> None: ...
