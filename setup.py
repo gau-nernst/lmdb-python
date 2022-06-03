@@ -1,22 +1,24 @@
 import os
-from setuptools import Extension, setup
+from pathlib import Path
+
 from Cython.Build import cythonize
+from setuptools import Extension, setup
 
-
-LMDB_DIR = "openldap/libraries/liblmdb"
+LMDB_DIR = Path("openldap", "libraries", "liblmdb")
 
 extra_link_args = []
 if os.name == "nt":
     extra_link_args.append("/DEFAULTLIB:advapi32.lib")
 
+sources = [
+    "lmdb_python/_cython/lmdb_c.pyx",
+    str(LMDB_DIR / "mdb.c"),
+    str(LMDB_DIR / "midl.c"),
+]
 ext = Extension(
     "lmdb_python._cython.lmdb_c",
-    [
-        "lmdb_python/_cython/lmdb_c.pyx",
-        os.path.join(LMDB_DIR, "mdb.c"),
-        os.path.join(LMDB_DIR, "midl.c"),
-    ],
-    include_dirs=[LMDB_DIR],
+    sources,
+    include_dirs=[str(LMDB_DIR)],
     extra_link_args=extra_link_args,
 )
 extensions = [ext]

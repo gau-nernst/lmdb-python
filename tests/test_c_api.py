@@ -1,8 +1,8 @@
 import os
-import pathlib
 import pickle
 import threading
 import time
+from pathlib import Path
 from typing import Any, Callable, Iterable, Tuple
 
 import lmdb_python.types
@@ -43,32 +43,32 @@ def test_error_code(error_code: int):
     assert isinstance(error_msg, str)
 
 
-def test_env_init(tmp_path: pathlib.Path):
+def test_env_init(tmp_path: Path):
     lmdb_c.LmdbEnvironment(str(tmp_path))
     assert os.path.isfile(tmp_path / "data.mdb")
     assert os.path.isfile(tmp_path / "lock.mdb")
 
 
-def test_env_init_no_dir_exception(tmp_path: pathlib.Path):
+def test_env_init_no_dir_exception(tmp_path: Path):
     invalid_tmp_path = tmp_path / "invalid"
     with pytest.raises(FileNotFoundError):
         lmdb_c.LmdbEnvironment(str(invalid_tmp_path))
 
 
-def test_env_init_no_subdir(tmp_path: pathlib.Path):
+def test_env_init_no_subdir(tmp_path: Path):
     env_path = str(tmp_path / "test_lmdb")
     lmdb_c.LmdbEnvironment(env_path, no_subdir=True)
     assert os.path.isfile(env_path)
     assert os.path.isfile(env_path + "-lock")
 
 
-def test_env_init_no_lock(tmp_path: pathlib.Path):
+def test_env_init_no_lock(tmp_path: Path):
     lmdb_c.LmdbEnvironment(str(tmp_path), no_lock=True)
     assert os.path.isfile(tmp_path / "data.mdb")
     assert not os.path.exists(tmp_path / "lock.mdb")
 
 
-def test_env_init_read_only(tmp_path: pathlib.Path):
+def test_env_init_read_only(tmp_path: Path):
     # for read-only env, a DB must exist first
     lmdb_c.LmdbEnvironment(str(tmp_path))
     env = lmdb_c.LmdbEnvironment(str(tmp_path), read_only=True)
@@ -78,7 +78,7 @@ def test_env_init_read_only(tmp_path: pathlib.Path):
 
 
 @pytest.fixture
-def lmdb_env(tmp_path: pathlib.Path):
+def lmdb_env(tmp_path: Path):
     return lmdb_c.LmdbEnvironment(str(tmp_path))
 
 
@@ -137,7 +137,7 @@ def test_env_get_max_key_size(lmdb_env: lmdb_c.LmdbEnvironment):
 
 
 @pytest.mark.parametrize("map_size_mb", (10, 100, 1000))
-def test_env_init_map_size(tmp_path: pathlib.Path, map_size_mb: int):
+def test_env_init_map_size(tmp_path: Path, map_size_mb: int):
     map_size = map_size_mb * 1024 * 1024
     env = lmdb_c.LmdbEnvironment(str(tmp_path), map_size=map_size)
     info = env.get_info()
@@ -145,7 +145,7 @@ def test_env_init_map_size(tmp_path: pathlib.Path, map_size_mb: int):
 
 
 @pytest.mark.parametrize("max_readers", (10, 100))
-def test_env_init_max_readers(tmp_path: pathlib.Path, max_readers: int):
+def test_env_init_max_readers(tmp_path: Path, max_readers: int):
     env = lmdb_c.LmdbEnvironment(str(tmp_path), max_readers=max_readers)
     assert env.get_max_readers() == max_readers
 
@@ -226,7 +226,7 @@ def test_dbi_init_name_no_create(tmp_path):
 
 
 @pytest.mark.parametrize("max_dbs", (0, 1, 5))
-def test_env_init_max_dbs(tmp_path: pathlib.Path, max_dbs: int):
+def test_env_init_max_dbs(tmp_path: Path, max_dbs: int):
     env = lmdb_c.LmdbEnvironment(str(tmp_path), max_dbs=max_dbs)
     txn = lmdb_c.LmdbTransaction(env, read_only=False)
 
@@ -387,7 +387,7 @@ def _test_data_is_present(env: lmdb_c.LmdbEnvironment, samples: Iterable[_KeyVal
 def test_env_copy(
     lmdb_env: lmdb_c.LmdbEnvironment,
     make_dbi_with_data: _MakeDbi,
-    tmp_path: pathlib.Path,
+    tmp_path: Path,
     method: str,
 ):
     make_dbi_with_data(_key_value_samples)
@@ -409,7 +409,7 @@ def test_env_copy(
 def test_env_copy_fd(
     lmdb_env: lmdb_c.LmdbEnvironment,
     make_dbi_with_data: _MakeDbi,
-    tmp_path: pathlib.Path,
+    tmp_path: Path,
     method: str,
 ):
     make_dbi_with_data(_key_value_samples)
@@ -432,7 +432,7 @@ def test_env_copy2_compact(
     lmdb_env: lmdb_c.LmdbEnvironment,
     make_txn: _MakeTxn,
     make_dbi_with_data: _MakeDbi,
-    tmp_path: pathlib.Path,
+    tmp_path: Path,
 ):
     dbi = make_dbi_with_data(_key_value_samples)
     txn = make_txn(read_only=False)
@@ -455,7 +455,7 @@ def test_env_copy_fd2_compact(
     lmdb_env: lmdb_c.LmdbEnvironment,
     make_txn: _MakeTxn,
     make_dbi_with_data: _MakeDbi,
-    tmp_path: pathlib.Path,
+    tmp_path: Path,
 ):
     dbi = make_dbi_with_data(_key_value_samples)
     txn = make_txn(read_only=False)
