@@ -414,9 +414,8 @@ def test_env_copy_fd(
 ):
     make_dbi_with_data(_key_value_samples)
     copied_path = tmp_path / "copied.mdb"
-    f = open(copied_path, "wb")
-    getattr(lmdb_env, method)(f.fileno())
-    f.close()
+    with open(copied_path, "wb") as f:
+        getattr(lmdb_env, method)(f.fileno())
 
     if os.name != "nt":
         original_size = os.stat(tmp_path / "data.mdb").st_size
@@ -465,9 +464,8 @@ def test_env_copy_fd2_compact(
     txn.commit()
 
     copied_path = tmp_path / "copied.mdb"
-    f = open(copied_path, "wb")
-    lmdb_env.copy_fd2(f.fileno(), compact=True)
-    f.close()
+    with open(copied_path, "wb") as f:
+        lmdb_env.copy_fd2(f.fileno(), compact=True)
 
     lmdb_c.LmdbEnvironment(str(copied_path), read_only=True, no_subdir=True)
     original_size = os.stat(tmp_path / "data.mdb").st_size
