@@ -159,9 +159,9 @@ def test_env_init_max_readers(tmp_path: pathlib.Path, max_readers: int):
             time.sleep(2)
             txn.abort()
 
-    threads = [
-        threading.Thread(target=target, args=(i,)) for i in range(max_readers + 1)
-    ]
+    threads = []
+    for i in range(max_readers + 1):
+        threads.append(threading.Thread(target=target, args=(i,)))
     for th in threads:
         th.start()
     for th in threads:
@@ -376,7 +376,7 @@ def test_delete(
     txn.abort()
 
 
-def _test_data_is_present(env, samples):
+def _test_data_is_present(env: lmdb_c.LmdbEnvironment, samples: Iterable[_KeyValue]):
     txn = lmdb_c.LmdbTransaction(env, read_only=True)
     dbi = lmdb_c.LmdbDatabase(txn)
     for k, v in samples:
@@ -384,7 +384,12 @@ def _test_data_is_present(env, samples):
 
 
 @pytest.mark.parametrize("method", ("copy", "copy2"))
-def test_env_copy(lmdb_env, make_dbi_with_data, tmp_path, method):
+def test_env_copy(
+    lmdb_env: lmdb_c.LmdbEnvironment,
+    make_dbi_with_data: _MakeDbi,
+    tmp_path: pathlib.Path,
+    method: str,
+):
     make_dbi_with_data(_key_value_samples)
     copied_path = tmp_path / "new_folder"
     os.makedirs(copied_path)
@@ -401,7 +406,12 @@ def test_env_copy(lmdb_env, make_dbi_with_data, tmp_path, method):
 
 
 @pytest.mark.parametrize("method", ("copy_fd", "copy_fd2"))
-def test_env_copy_fd(lmdb_env, make_dbi_with_data, tmp_path, method):
+def test_env_copy_fd(
+    lmdb_env: lmdb_c.LmdbEnvironment,
+    make_dbi_with_data: _MakeDbi,
+    tmp_path: pathlib.Path,
+    method: str,
+):
     make_dbi_with_data(_key_value_samples)
     copied_path = tmp_path / "copied.mdb"
     f = open(copied_path, "wb")
@@ -419,7 +429,12 @@ def test_env_copy_fd(lmdb_env, make_dbi_with_data, tmp_path, method):
     _test_data_is_present(copied_env, _key_value_samples)
 
 
-def test_env_copy2_compact(lmdb_env, make_txn, make_dbi_with_data, tmp_path):
+def test_env_copy2_compact(
+    lmdb_env: lmdb_c.LmdbEnvironment,
+    make_txn: _MakeTxn,
+    make_dbi_with_data: _MakeDbi,
+    tmp_path: pathlib.Path,
+):
     dbi = make_dbi_with_data(_key_value_samples)
     txn = make_txn(read_only=False)
     for k in _key_samples:
@@ -437,7 +452,12 @@ def test_env_copy2_compact(lmdb_env, make_txn, make_dbi_with_data, tmp_path):
     assert copied_size < original_size
 
 
-def test_env_copy_fd2_compact(lmdb_env, make_txn, make_dbi_with_data, tmp_path):
+def test_env_copy_fd2_compact(
+    lmdb_env: lmdb_c.LmdbEnvironment,
+    make_txn: _MakeTxn,
+    make_dbi_with_data: _MakeDbi,
+    tmp_path: pathlib.Path,
+):
     dbi = make_dbi_with_data(_key_value_samples)
     txn = make_txn(read_only=False)
     for k in _key_samples:
