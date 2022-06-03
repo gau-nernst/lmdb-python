@@ -1,4 +1,5 @@
 import os
+from typing import Iterable, Tuple
 
 from ._cython import lmdb_c
 
@@ -46,3 +47,18 @@ class Database:
     def delete(self, key: bytes):
         with _Transaction(self.env) as txn:
             return self.dbi.delete(key, txn)
+
+    def get_batch(self, keys: Iterable[bytes]):
+        with _Transaction(self.env, read_only=True) as txn:
+            for k in keys:
+                yield self.dbi.get(k, txn)
+
+    def put_batch(self, kv_pairs: Iterable[Tuple[bytes, bytes]]):
+        with _Transaction(self.env) as txn:
+            for k, v in kv_pairs:
+                self.dbi.put(k, v, txn)
+
+    def delete_batch(self, keys: Iterable[bytes]):
+        with _Transaction(self.env) as txn:
+            for k in keys:
+                self.dbi.delete(k, txn)
