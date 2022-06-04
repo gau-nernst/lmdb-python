@@ -1,3 +1,4 @@
+import concurrent.futures
 from pathlib import Path
 from typing import List
 
@@ -70,3 +71,19 @@ def test_delete_batch(db_with_data_100: Database, keys_100: List[bytes]):
         with pytest.raises(lmdb_c.LmdbException) as e:
             db_with_data_100.get(k)
         assert e.value.rc == lmdb_c.MDB_NOTFOUND
+
+
+def test_get_multithreading(
+    tmp_path: Path, db_with_data_100: Database, keys_100: List[bytes]
+):
+    def create_worker(keys: List[bytes], tmp_path: Path):
+        db_thread = Database(str(tmp_path), read_only=True)
+        for k in keys:
+            db_thread.get(k)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [
+            executor.submit(create_worker, keys_100, tmp_path) for _ in range(10)
+        ]
+        for f in futures:
+            f.result()

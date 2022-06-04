@@ -3,6 +3,8 @@ from typing import Iterable, Tuple
 
 from ._cython import lmdb_c
 
+__all__ = ["Database"]
+
 
 class _Transaction:
     def __init__(self, env: lmdb_c.LmdbEnvironment, read_only: bool = False):
@@ -20,20 +22,11 @@ class _Transaction:
 
 
 class Database:
-    def __init__(
-        self,
-        path: str,
-        map_size: int = 10 * 1024 * 1024,
-        read_only: bool = False,
-    ):
+    def __init__(self, path: str, read_only: bool = False, **kwargs):
         if not os.path.exists(path):
             os.makedirs(path)
-        self.env = lmdb_c.LmdbEnvironment(
-            path,
-            map_size=map_size,
-            read_only=read_only,
-        )
-        with _Transaction(self.env) as txn:
+        self.env = lmdb_c.LmdbEnvironment(path, read_only=read_only, **kwargs)
+        with _Transaction(self.env, read_only=read_only) as txn:
             self.dbi = lmdb_c.LmdbDatabase(txn)
 
     def get(self, key: bytes):
