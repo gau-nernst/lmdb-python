@@ -1,52 +1,42 @@
-from collections import namedtuple
+from typing import NamedTuple
 
 
-LmdbStat = namedtuple(
-    "LmdbStat",
-    [
-        "ms_psize",
-        "ms_depth",
-        "ms_branch_pages",
-        "ms_leaf_pages",
-        "ms_overflow_pages",
-        "ms_entries",
-    ],
-)
-LmdbEnvInfo = namedtuple(
-    "LmdbEnvInfo",
-    [
-        "me_mapsize",
-        "me_last_pgno",
-        "me_last_txnid",
-        "me_maxreaders",
-        "me_numreaders",
-    ],
-)
-LmdbEnvFlags = namedtuple(
-    "LmdbEnvFlags",
-    [
-        "fixed_map",
-        "no_subdir",
-        "read_only",
-        "write_map",
-        "no_meta_sync",
-        "no_sync",
-        "map_async",
-        "no_tls",
-        "no_lock",
-        "no_readahead",
-        "no_meminit",
-    ],
-)
-LmdbDbFlags = namedtuple(
-    "LmdbDbFlags",
-    [
-        "reverse_key",
-        "duplicate_sort",
-        "integer_key",
-        "duplicate_fixed",
-        "integer_duplicate",
-        "reverse_duplicate",
-        "creat",
-    ],
-)
+class LmdbStat(NamedTuple):
+    ms_psize: int
+    ms_depth: int
+    ms_branch_pages: int
+    ms_leaf_pages: int
+    ms_overflow_pages: int
+    ms_entries: int
+
+
+class LmdbEnvInfo(NamedTuple):
+    me_mapsize: int
+    me_last_pgno: int
+    me_last_txnid: int
+    me_maxreaders: int
+    me_numreaders: int
+
+
+class LmdbEnvFlags(NamedTuple):
+    fixed_map: bool
+    no_subdir: bool
+    read_only: bool
+    write_map: bool
+    no_meta_sync: bool
+    no_sync: bool
+    map_async: bool
+    no_tls: bool
+    no_lock: bool
+    no_readahead: bool
+    no_meminit: bool
+
+
+class LmdbDbFlags(NamedTuple):
+    reverse_key: bool
+    duplicate_sort: bool
+    integer_key: bool
+    duplicate_fixed: bool
+    integer_duplicate: bool
+    reverse_duplicate: bool
+    create: bool
