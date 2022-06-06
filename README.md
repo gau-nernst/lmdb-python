@@ -1,6 +1,7 @@
 # LMDB Python
 
 [![Build and Test](https://github.com/gau-nernst/lmdb-python/actions/workflows/build.yaml/badge.svg)](https://github.com/gau-nernst/lmdb-python/actions/workflows/build.yaml)
+![python >=3.7](https://img.shields.io/badge/python-%3E%3D3.7-informational)
 
 Another Python bindings for LMDB.
 
@@ -28,7 +29,13 @@ pip install .
 
 ## Usage
 
-TBD
+```python
+from lmdb_python import Database
+
+db = Database("test_db")
+db.put(b"key", b"value")
+assert db.get(b"key") == b"value"
+```
 
 ## Run tests
 
