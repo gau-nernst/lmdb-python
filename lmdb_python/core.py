@@ -1,7 +1,8 @@
 import os
-from typing import Generator, Iterable, Tuple
+from typing import Generator, Iterable, Optional, Tuple
 
 from ._cython import lmdb_c
+from .types import LmdbEnvFlags
 
 __all__ = ["Database"]
 
@@ -25,24 +26,27 @@ class Database:
     def __init__(
         self,
         path: str,
-        read_only: bool = False,
         map_size: int = 10 * 1024 * 1024,  # 10MB
+        max_readers: int = 126,
+        max_dbs: int = 0,
+        flags: Optional[LmdbEnvFlags] = None,
     ):
         if not os.path.exists(path):
             os.makedirs(path)
-        self.env = lmdb_c.LmdbEnvironment(
-            path,
-            read_only=read_only,
-            map_size=map_size,
-        )
-        with _Transaction(self.env, read_only=read_only) as txn:
+        if flags is None:
+            flags = LmdbEnvFlags()
+        self.env = lmdb_c.LmdbEnvironment(path, map_size, max_readers, max_dbs, *flags)
+        with _Transaction(self.env, read_only=flags.read_only) as txn:
             self.dbi = lmdb_c.LmdbDatabase(txn)
         self.path = path
-        self.read_only = read_only
         self.map_size = map_size
+        self.max_readers = max_readers
+        self.max_dbs = max_dbs
+        self.flags = flags
 
     def __reduce__(self):
-        return (self.__class__, (self.path, self.read_only, self.map_size))
+        attrs = (self.path, self.map_size, self.max_readers, self.max_dbs, self.flags)
+        return (self.__class__, attrs)
 
     def get(self, key: bytes) -> bytes:
         with _Transaction(self.env, read_only=True) as txn:

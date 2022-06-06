@@ -19,24 +19,24 @@ class LmdbEnvInfo(NamedTuple):
 
 
 class LmdbEnvFlags(NamedTuple):
-    fixed_map: bool
-    no_subdir: bool
-    read_only: bool
-    write_map: bool
-    no_meta_sync: bool
-    no_sync: bool
-    map_async: bool
-    no_tls: bool
-    no_lock: bool
-    no_readahead: bool
-    no_meminit: bool
+    fixed_map: bool = False
+    no_subdir: bool = False
+    no_sync: bool = False
+    read_only: bool = False
+    no_meta_sync: bool = False
+    write_map: bool = False
+    map_async: bool = False
+    no_tls: bool = False
+    no_lock: bool = False
+    no_readahead: bool = False
+    no_meminit: bool = False
 
 
 class LmdbDbFlags(NamedTuple):
-    reverse_key: bool
-    duplicate_sort: bool
-    integer_key: bool
-    duplicate_fixed: bool
-    integer_duplicate: bool
-    reverse_duplicate: bool
-    create: bool
+    reverse_key: bool = False
+    duplicate_sort: bool = False
+    integer_key: bool = False
+    duplicate_fixed: bool = False
+    integer_duplicate: bool = False
+    reverse_duplicate: bool = False
+    create: bool = False

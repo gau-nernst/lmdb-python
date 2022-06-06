@@ -280,10 +280,10 @@ cdef class LmdbEnvironment:
         return LmdbEnvFlags(
             _flag_is_set(flags, lmdb.MDB_FIXEDMAP),
             _flag_is_set(flags, lmdb.MDB_NOSUBDIR),
-            _flag_is_set(flags, lmdb.MDB_RDONLY),
-            _flag_is_set(flags, lmdb.MDB_WRITEMAP),
-            _flag_is_set(flags, lmdb.MDB_NOMETASYNC),
             _flag_is_set(flags, lmdb.MDB_NOSYNC),
+            _flag_is_set(flags, lmdb.MDB_RDONLY),
+            _flag_is_set(flags, lmdb.MDB_NOMETASYNC),
+            _flag_is_set(flags, lmdb.MDB_WRITEMAP),
             _flag_is_set(flags, lmdb.MDB_MAPASYNC),
             _flag_is_set(flags, lmdb.MDB_NOTLS),
             _flag_is_set(flags, lmdb.MDB_NOLOCK),

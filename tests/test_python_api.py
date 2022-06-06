@@ -3,8 +3,7 @@ from pathlib import Path
 from typing import List
 
 import pytest
-from lmdb_python import lmdb_c
-from lmdb_python.core import Database
+from lmdb_python import Database, LmdbEnvFlags, lmdb_c
 
 
 def test_create_db(tmp_path: Path):
@@ -77,7 +76,8 @@ def test_get_multithreading(
     tmp_path: Path, db_with_data_100: Database, keys_100: List[bytes]
 ):
     def create_worker(keys: List[bytes], tmp_path: Path):
-        db_thread = Database(str(tmp_path), read_only=True)
+        flags = LmdbEnvFlags(read_only=True)
+        db_thread = Database(str(tmp_path), flags=flags)
         for k in keys:
             db_thread.get(k)
 
