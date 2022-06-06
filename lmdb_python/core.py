@@ -1,5 +1,5 @@
 import os
-from typing import Iterable, Tuple
+from typing import Generator, Iterable, Tuple
 
 from ._cython import lmdb_c
 
@@ -22,36 +22,51 @@ class _Transaction:
 
 
 class Database:
-    def __init__(self, path: str, read_only: bool = False, **kwargs):
+    def __init__(
+        self,
+        path: str,
+        read_only: bool = False,
+        map_size: int = 10 * 1024 * 1024,  # 10MB
+    ):
         if not os.path.exists(path):
             os.makedirs(path)
-        self.env = lmdb_c.LmdbEnvironment(path, read_only=read_only, **kwargs)
+        self.env = lmdb_c.LmdbEnvironment(
+            path,
+            read_only=read_only,
+            map_size=map_size,
+        )
         with _Transaction(self.env, read_only=read_only) as txn:
             self.dbi = lmdb_c.LmdbDatabase(txn)
+        self.path = path
+        self.read_only = read_only
+        self.map_size = map_size
 
-    def get(self, key: bytes):
+    def __reduce__(self):
+        return (self.__class__, (self.path, self.read_only, self.map_size))
+
+    def get(self, key: bytes) -> bytes:
         with _Transaction(self.env, read_only=True) as txn:
             return self.dbi.get(key, txn)
 
-    def put(self, key: bytes, value: bytes):
+    def put(self, key: bytes, value: bytes) -> None:
         with _Transaction(self.env) as txn:
-            return self.dbi.put(key, value, txn)
+            self.dbi.put(key, value, txn)
 
-    def delete(self, key: bytes):
+    def delete(self, key: bytes) -> None:
         with _Transaction(self.env) as txn:
-            return self.dbi.delete(key, txn)
+            self.dbi.delete(key, txn)
 
-    def get_batch(self, keys: Iterable[bytes]):
+    def get_batch(self, keys: Iterable[bytes]) -> Generator[bytes, None, None]:
         with _Transaction(self.env, read_only=True) as txn:
             for k in keys:
                 yield self.dbi.get(k, txn)
 
-    def put_batch(self, kv_pairs: Iterable[Tuple[bytes, bytes]]):
+    def put_batch(self, kv_pairs: Iterable[Tuple[bytes, bytes]]) -> None:
         with _Transaction(self.env) as txn:
             for k, v in kv_pairs:
                 self.dbi.put(k, v, txn)
 
-    def delete_batch(self, keys: Iterable[bytes]):
+    def delete_batch(self, keys: Iterable[bytes]) -> None:
         with _Transaction(self.env) as txn:
             for k in keys:
                 self.dbi.delete(k, txn)

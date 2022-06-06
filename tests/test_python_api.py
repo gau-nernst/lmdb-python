@@ -81,9 +81,16 @@ def test_get_multithreading(
         for k in keys:
             db_thread.get(k)
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        futures = [
-            executor.submit(create_worker, keys_100, tmp_path) for _ in range(10)
-        ]
+    N = 10
+    with concurrent.futures.ThreadPoolExecutor(max_workers=N) as executor:
+        futures = [executor.submit(create_worker, keys_100, tmp_path) for _ in range(N)]
         for f in futures:
             f.result()
+
+
+def test_get_multiprocessing(db_with_data_100: Database, keys_100: List[bytes]):
+    N = 10
+    with concurrent.futures.ProcessPoolExecutor(max_workers=N) as executor:
+        results = executor.map(db_with_data_100.get, keys_100)
+        for _ in results:
+            pass
