@@ -280,10 +280,10 @@ cdef class LmdbEnvironment:
         return LmdbEnvFlags(
             _flag_is_set(flags, lmdb.MDB_FIXEDMAP),
             _flag_is_set(flags, lmdb.MDB_NOSUBDIR),
-            _flag_is_set(flags, lmdb.MDB_RDONLY),
-            _flag_is_set(flags, lmdb.MDB_WRITEMAP),
-            _flag_is_set(flags, lmdb.MDB_NOMETASYNC),
             _flag_is_set(flags, lmdb.MDB_NOSYNC),
+            _flag_is_set(flags, lmdb.MDB_RDONLY),
+            _flag_is_set(flags, lmdb.MDB_NOMETASYNC),
+            _flag_is_set(flags, lmdb.MDB_WRITEMAP),
             _flag_is_set(flags, lmdb.MDB_MAPASYNC),
             _flag_is_set(flags, lmdb.MDB_NOTLS),
             _flag_is_set(flags, lmdb.MDB_NOLOCK),
@@ -325,8 +325,10 @@ cdef class LmdbEnvironment:
 
 cdef class LmdbTransaction:
     cdef lmdb.MDB_txn* txn
+    read_only: bool
 
     def __cinit__(self, env: LmdbEnvironment, read_only: bool = False):
+        self.read_only = read_only
         cdef unsigned int flags = 0
         if read_only:
             flags |= lmdb.MDB_RDONLY
@@ -349,7 +351,16 @@ cdef class LmdbTransaction:
             lmdb.mdb_txn_abort(self.txn)
             self.txn = NULL
 
-    def __dealloc__(self):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback) -> None:
+        if self.read_only:
+            self.abort()
+        else:
+            self.commit()
+
+    def __dealloc__(self) -> None:
         if self.txn is not NULL:
             lmdb.mdb_txn_abort(self.txn)
             self.txn = NULL
