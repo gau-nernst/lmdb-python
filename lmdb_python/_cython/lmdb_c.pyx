@@ -325,8 +325,10 @@ cdef class LmdbEnvironment:
 
 cdef class LmdbTransaction:
     cdef lmdb.MDB_txn* txn
+    read_only: bool
 
     def __cinit__(self, env: LmdbEnvironment, read_only: bool = False):
+        self.read_only = read_only
         cdef unsigned int flags = 0
         if read_only:
             flags |= lmdb.MDB_RDONLY
@@ -349,7 +351,16 @@ cdef class LmdbTransaction:
             lmdb.mdb_txn_abort(self.txn)
             self.txn = NULL
 
-    def __dealloc__(self):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback) -> None:
+        if self.read_only:
+            self.abort()
+        else:
+            self.commit()
+
+    def __dealloc__(self) -> None:
         if self.txn is not NULL:
             lmdb.mdb_txn_abort(self.txn)
             self.txn = NULL
