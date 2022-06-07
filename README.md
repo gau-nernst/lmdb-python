@@ -9,7 +9,9 @@ This repo serves as a practice for me to learn how to use 3rd-party C/C++ librar
 
 ## Installation
 
-Clone and install the repo directly
+From wheels: To be provided
+
+From source: Clone recursively and install the repo directly
 
 ```bash
 git clone --recursive https://github.com/gau-nernst/lmdb-python
@@ -17,7 +19,13 @@ cd lmdb-python
 pip install .
 ```
 
-If you want to build with a specific version of LMDB, checkout the corresponding tag in the `openldap` submodule before installing the package
+On macOS, you might need to set some environment variables to use `clang` compiler
+
+```bash
+CC=clang CXX=clang++ pip install .
+```
+
+If you want to build against a specific version of LMDB, checkout the corresponding tag in the `openldap` submodule before installing the package
 
 ```bash
 # assume you are inside 'lmdb-python' directory now
