@@ -4,6 +4,10 @@ on:
     types: [published]
   workflow_dispatch:
     inputs:
+      make_release:
+        description: Publish a new release
+        type: boolean
+        default: false
 
 jobs:
   build_wheels:
