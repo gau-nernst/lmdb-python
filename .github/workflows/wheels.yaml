@@ -25,16 +25,16 @@ jobs:
           # macOS
           - os: macos-latest
             python: "37"
-            platform_id: macos_x86_64
+            platform_id: macosx_x86_64
           - os: macos-latest
             python: "38"
-            platform_id: macos_universal2
+            platform_id: macosx_universal2
           - os: macos-latest
             python: "39"
-            platform_id: macos_universal2
+            platform_id: macosx_universal2
           - os: macos-latest
             python: "310"
-            platform_id: macos_universal2
+            platform_id: macosx_universal2
 
           # Windows
           - os: windows-latest
