@@ -46,11 +46,13 @@ jobs:
         env:
           CIBW_BUILD_VERBOSITY: 1
 
-          # skip Python 3.6 and PyPy
-          CIBW_SKIP: cp36-* pp*
+          # skip Python 3.6, PyPy, and musllinux
+          # skip x86_64 builds on macOS for Python 3.8-3.10
+          CIBW_SKIP: cp36-* pp* *-musllinux-* cp3{8,9,10}-macosx_x86_64
 
           # only build universal2 on macOS
-          CIBW_ARCHS_MACOS: universal2
+          # universal2 is not available on Python 3.7
+          CIBW_ARCHS_MACOS: x86_64 universal2
           CIBW_TEST_SKIP: "*-macosx_universal2:arm64"
 
           # only build 64-bit x86 on Windows
