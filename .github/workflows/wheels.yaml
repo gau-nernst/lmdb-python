@@ -99,6 +99,9 @@ jobs:
           name: wheels
           path: wheelhouse
       - name: Create release
-        run: gh release create v0.0.1 ./wheelhouse/*.whl --generate-notes
+        run: |
+          pip install lmdb-python -f ./wheelhouse
+          export RELEASE_VERSION=$(python -c "import lmdb_python; print(lmdb_python.__version__)")
+          gh release create $RELEASE_VERSION ./wheelhouse/*.whl --generate-notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
