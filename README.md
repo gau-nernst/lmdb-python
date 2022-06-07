@@ -12,10 +12,16 @@ This repo serves as a practice for me to learn how to use 3rd-party C/C++ librar
 
 From wheels: To be provided
 
-From source: Clone recursively and install the repo directly
+From source: Install directly from this GitHub repo
 
 ```bash
-git clone --recursive https://github.com/gau-nernst/lmdb-python
+pip install git+https://github.com/gau-nernst/lmdb-python.git
+```
+
+Alternatively, you can clone the repo locally and install from the local clone (remember to clone recursively to get OpenLDAP LMDB C source)
+
+```bash
+git clone --recursive https://github.com/gau-nernst/lmdb-python.git
 cd lmdb-python
 pip install .
 ```
