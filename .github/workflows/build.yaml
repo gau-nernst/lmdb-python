@@ -2,8 +2,10 @@ name: Build and Test
 on:
   push:
     paths-ignore:
-      - ".github/**"
-      - "README.md"
+      - .github/**
+      - README.md
+      - .gitignore
+      - .gitmodules
 
 jobs:
   build:
