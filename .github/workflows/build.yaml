@@ -1,5 +1,10 @@
 name: Build and Test
-on: push
+on:
+  push:
+    paths-ignore:
+      - ".github/**"
+      - "README.md"
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -25,9 +30,8 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install Cython pytest
 
-      # use clang in macos
-      - name: Set environment variables for macOS
-        if: matrix.os == 'macos-latest'
+      - name: Set compiler to clang on macOS
+        if: runner.os == 'macOS'
         run: |
           echo "CC=/usr/bin/clang" >> $GITHUB_ENV
           echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
