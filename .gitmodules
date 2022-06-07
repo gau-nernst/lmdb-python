@@ -1,4 +1,4 @@
 [submodule "openldap"]
 	path = openldap
-	url = https://git.openldap.org/openldap/openldap
+	url = https://git.openldap.org/openldap/openldap.git
 	branch = master
