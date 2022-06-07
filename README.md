@@ -1,6 +1,7 @@
 # LMDB Python
 
 [![Build and Test](https://github.com/gau-nernst/lmdb-python/actions/workflows/build.yaml/badge.svg)](https://github.com/gau-nernst/lmdb-python/actions/workflows/build.yaml)
+[![Build wheels](https://github.com/gau-nernst/lmdb-python/actions/workflows/wheels.yaml/badge.svg)](https://github.com/gau-nernst/lmdb-python/actions/workflows/wheels.yaml)
 ![python >=3.7](https://img.shields.io/badge/python-%3E%3D3.7-informational)
 
 Another Python bindings for LMDB.
