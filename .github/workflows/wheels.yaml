@@ -13,7 +13,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        platform_id:
+          - manylinux_x86_64
+          - manylinux_aarch64
+          - macosx_universal2
+          - win_amd64
         python: ["37", "38", "39", "310"]
         include:
           # Linux
@@ -24,21 +28,18 @@ jobs:
           
           # macOS
           - os: macos-latest
+            platform_id: macosx_universal2
+          - os: macos-latest
             python: "37"
             platform_id: macosx_x86_64
-          - os: macos-latest
-            python: "38"
-            platform_id: macosx_universal2
-          - os: macos-latest
-            python: "39"
-            platform_id: macosx_universal2
-          - os: macos-latest
-            python: "310"
-            platform_id: macosx_universal2
 
           # Windows
           - os: windows-latest
             platform_id: win_amd64
+        
+        exclude:
+          - platform_id: macosx_universal2
+            python: "37"
 
     steps:
       - name: Checkout
