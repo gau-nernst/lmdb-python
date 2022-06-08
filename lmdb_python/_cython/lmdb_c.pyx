@@ -366,21 +366,15 @@ cdef class LmdbTransaction:
             self.txn = NULL
 
 
-cdef class _LmdbData:
-    cdef lmdb.MDB_val data
+cdef lmdb.MDB_val _bytes_to_mv(bytes data):
+    cdef lmdb.MDB_val mdb_data
+    mdb_data.mv_size = len(data)
+    mdb_data.mv_data = <char*> data
+    return mdb_data
 
-    def __cinit__(self, data: Optional[bytes] = None):
-        if data is not None:
-            self.data.mv_size = len(data)
-            self.data.mv_data = <char*> data
 
-    def to_bytes(self) -> Optional[bytes]:
-        if self.data.mv_data == NULL:
-            return None
-        return (<char*> self.data.mv_data)[:self.data.mv_size]
-
-    def __repr__(self) -> str:
-        return f"_LmdbValue({self.to_bytes()})"
+cdef bytes _mv_to_bytes(lmdb.MDB_val mdb_data):
+    return (<char*>mdb_data.mv_data)[:mdb_data.mv_size]
 
 
 cdef class LmdbDatabase:
@@ -455,11 +449,11 @@ cdef class LmdbDatabase:
         _check_rc(rc)
 
     def get(self, key: bytes, txn: LmdbTransaction) -> bytes:
-        _key = _LmdbData(key)
-        _value = _LmdbData()
-        rc = lmdb.mdb_get(txn.txn, self.dbi, &_key.data, &_value.data)
+        cdef lmdb.MDB_val mdb_key = _bytes_to_mv(key)
+        cdef lmdb.MDB_val mdb_value
+        rc = lmdb.mdb_get(txn.txn, self.dbi, &mdb_key, &mdb_value)
         _check_rc(rc)
-        return _value.to_bytes()
+        return _mv_to_bytes(mdb_value)
     
     def put(
         self,
@@ -474,8 +468,8 @@ cdef class LmdbDatabase:
         append_duplicate: bool = False,
         multiple: bool = False,
     ) -> None:
-        _key = _LmdbData(key)
-        _value = _LmdbData(value)
+        cdef lmdb.MDB_val mdb_key = _bytes_to_mv(key)
+        cdef lmdb.MDB_val mdb_value = _bytes_to_mv(value)
         cdef unsigned int flags = 0
         if no_overwrite:
             flags |= lmdb.MDB_NOOVERWRITE
@@ -491,10 +485,10 @@ cdef class LmdbDatabase:
             flags |= lmdb.MDB_APPENDDUP
         if multiple:
             flags |= lmdb.MDB_MULTIPLE
-        rc = lmdb.mdb_put(txn.txn, self.dbi, &_key.data, &_value.data, flags)
+        rc = lmdb.mdb_put(txn.txn, self.dbi, &mdb_key, &mdb_value, flags)
         _check_rc(rc)
 
     def delete(self, key: bytes, txn: LmdbTransaction) -> None:
-        _key = _LmdbData(key)
-        rc = lmdb.mdb_del(txn.txn, self.dbi, &_key.data, NULL)
+        cdef lmdb.MDB_val mdb_key = _bytes_to_mv(key)
+        rc = lmdb.mdb_del(txn.txn, self.dbi, &mdb_key, NULL)
         _check_rc(rc)

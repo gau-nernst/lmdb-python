@@ -238,29 +238,9 @@ def test_env_init_max_dbs(tmp_path: Path, max_dbs: int):
     txn.commit()
 
 
-def test_data_empty():
-    lmdb_data = lmdb_c._LmdbData()
-    assert lmdb_data.to_bytes() is None
-
-
-_bytes_samples = (b"123", b"a quick brown fox", "hello".encode("utf-8"))
-_non_bytes_samples = ("a string", 100, list())
-
 _key_samples = (b"key123", "u1234532".encode("utf-8"))
 _value_samples = (b"value456", pickle.dumps(["1", 12, "Engineer"]))
 _key_value_samples = tuple(zip(_key_samples, _value_samples))
-
-
-@pytest.mark.parametrize("data", _bytes_samples)
-def test_data(data: bytes):
-    lmdb_data = lmdb_c._LmdbData(data)
-    assert lmdb_data.to_bytes() == data
-
-
-@pytest.mark.parametrize("data", _non_bytes_samples)
-def test_data_type_error(data: Any):
-    with pytest.raises(TypeError):
-        lmdb_c._LmdbData(data)
 
 
 @pytest.mark.parametrize("key,value", _key_value_samples)
