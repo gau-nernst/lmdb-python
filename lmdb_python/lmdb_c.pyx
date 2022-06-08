@@ -6,7 +6,7 @@ from typing import Optional
 from . cimport lmdb
 IF UNAME_SYSNAME != "Linux" and UNAME_SYSNAME != "Darwin":
     from . cimport msvcrt
-from ..types import LmdbStat, LmdbEnvInfo, LmdbEnvFlags, LmdbDbFlags
+from .types import LmdbStat, LmdbEnvInfo, LmdbEnvFlags, LmdbDbFlags
 
 # define symbols
 MDB_VERSION_MAJOR = lmdb.MDB_VERSION_MAJOR

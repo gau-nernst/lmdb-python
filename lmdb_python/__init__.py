@@ -1,4 +1,4 @@
-from ._cython import lmdb_c
+from . import lmdb_c
 from .core import Database
 from .types import LmdbDbFlags, LmdbEnvFlags, LmdbEnvInfo, LmdbStat
 from .version import __version__

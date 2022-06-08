@@ -1,6 +1,6 @@
 from typing import Optional
 
-from ..types import LmdbDbFlags, LmdbEnvFlags, LmdbEnvInfo, LmdbStat
+from .types import LmdbDbFlags, LmdbEnvFlags, LmdbEnvInfo, LmdbStat
 
 MDB_VERSION_MAJOR: int
 MDB_VERSION_MINOR: int

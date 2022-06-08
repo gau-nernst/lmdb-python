@@ -1,7 +1,7 @@
 import os
 from typing import Generator, Iterable, Optional, Tuple
 
-from ._cython.lmdb_c import LmdbDatabase, LmdbEnvironment, LmdbTransaction
+from .lmdb_c import LmdbDatabase, LmdbEnvironment, LmdbTransaction
 from .types import LmdbEnvFlags
 
 __all__ = ["Database"]

@@ -12,9 +12,9 @@ with open(Path(__file__).parent / "lmdb_python" / "version.py") as f:
     VERSION = re.search(r"([\d.]+)", f.readline().rstrip()).group(1)
 
 ext = Extension(
-    "lmdb_python._cython.lmdb_c",
+    "lmdb_python.lmdb_c",
     sources=[
-        "lmdb_python/_cython/lmdb_c.pyx",
+        "lmdb_python/lmdb_c.pyx",
         str(LMDB_DIR / "mdb.c"),
         str(LMDB_DIR / "midl.c"),
     ],
