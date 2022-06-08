@@ -16,7 +16,7 @@ def update_index(url: str, save_path: str):
             files.append(f'    <a href="{wheel_url}">{wheel_name}</a>')
 
     with open(save_path, "w") as f:
-        f.write(index_template.format("\n".join(files)))
+        f.write(index_template.format("<br>\n".join(files)))
 
 
 if __name__ == "__main__":
