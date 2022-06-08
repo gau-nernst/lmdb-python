@@ -10,16 +10,26 @@ This repo serves as a practice for me to learn how to use 3rd-party C/C++ librar
 
 ## Installation
 
-From wheels: To be provided
+From wheels:
 
-Pre-built wheels matrix
+```bash
+pip install lmdb-python -f https://gau-nernst.github.io/lmdb-python/
+```
 
-Python version | Linux (x86_64 and aarch64) | macOS (universal2) | Windows (x86_64 only)
+The following pre-built wheels are provided (64-bit only)
+
+Python version | Linux | macOS | Windows
 --|--|--|--
-3.7 | ✅ | ✅ (x86_64 only) | ✅ 
+3.7 | ✅ | ✅ | ✅ 
 3.8 | ✅ | ✅ | ✅
 3.9 | ✅ | ✅ | ✅
 3.10 | ✅ | ✅ | ✅
+
+OS | Platform
+---|---------
+Linux | x86_64 and aarch64 (manylinux2014 only, musllinux is not available)
+macOS | universal2 (supports both Intel Mac and Apple Silicon Mac), except Python 3.7, where only Intel Mac is supported
+Windows | x86_64 only
 
 From source: Install directly from this GitHub repo
 
