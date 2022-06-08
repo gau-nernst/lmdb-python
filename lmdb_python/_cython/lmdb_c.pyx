@@ -43,45 +43,6 @@ def strerror(err: int) -> str:
     return lmdb.mdb_strerror(err).decode()
 
 
-def _env_flags_to_int(
-    fixed_map: bool = False,
-    no_subdir: bool = False,
-    no_sync: bool = False,
-    read_only: bool = False,
-    no_meta_sync: bool = False,
-    write_map: bool = False,
-    map_async: bool = False,
-    no_tls: bool = False,
-    no_lock: bool = False,
-    no_readahead: bool = False,
-    no_meminit: bool = False,
-) -> int:
-    cdef unsigned int flags = 0
-    if fixed_map:
-        flags |= lmdb.MDB_FIXEDMAP
-    if no_subdir:
-        flags |= lmdb.MDB_NOSUBDIR
-    if no_sync:
-        flags |= lmdb.MDB_NOSYNC
-    if read_only:
-        flags |= lmdb.MDB_RDONLY
-    if no_meta_sync:
-        flags |= lmdb.MDB_NOMETASYNC
-    if write_map:
-        flags |= lmdb.MDB_WRITEMAP
-    if map_async:
-        flags |= lmdb.MDB_MAPASYNC
-    if no_tls:
-        flags |= lmdb.MDB_NOTLS
-    if no_lock:
-        flags |= lmdb.MDB_NOLOCK
-    if no_readahead:
-        flags |= lmdb.MDB_NORDAHEAD
-    if no_meminit:
-        flags |= lmdb.MDB_NOMEMINIT
-    return flags
-
-
 def _flag_is_set(unsigned int flags, unsigned int flag) -> bool:
     return (flags & flag) == flag
 
@@ -110,8 +71,6 @@ class LmdbException(Exception):
 def _check_rc(rc: int) -> None:
     if rc == 0:
         return
-    if rc == errno.ENOMEM:
-        raise MemoryError()
     if rc > 0:
         IF UNAME_SYSNAME != "Linux" and UNAME_SYSNAME != "Darwin":
             raise ctypes.WinError(rc)
@@ -145,6 +104,7 @@ cdef class LmdbEnvironment:
         if rc:
             self.close()
             _check_rc(rc)
+
         self.set_map_size(map_size)
 
         # This function may only be called after
@@ -155,19 +115,30 @@ cdef class LmdbEnvironment:
             rc = lmdb.mdb_env_set_maxdbs(self.env, max_dbs)
             _check_rc(rc)
 
-        cdef unsigned int flags = _env_flags_to_int(
-            fixed_map,
-            no_subdir,
-            no_sync,
-            read_only,
-            no_meta_sync,
-            write_map,
-            map_async,
-            no_tls,
-            no_lock,
-            no_readahead,
-            no_meminit,
-        )
+        cdef unsigned int flags = 0
+        if fixed_map:
+            flags |= lmdb.MDB_FIXEDMAP
+        if no_subdir:
+            flags |= lmdb.MDB_NOSUBDIR
+        if no_sync:
+            flags |= lmdb.MDB_NOSYNC
+        if read_only:
+            flags |= lmdb.MDB_RDONLY
+        if no_meta_sync:
+            flags |= lmdb.MDB_NOMETASYNC
+        if write_map:
+            flags |= lmdb.MDB_WRITEMAP
+        if map_async:
+            flags |= lmdb.MDB_MAPASYNC
+        if no_tls:
+            flags |= lmdb.MDB_NOTLS
+        if no_lock:
+            flags |= lmdb.MDB_NOLOCK
+        if no_readahead:
+            flags |= lmdb.MDB_NORDAHEAD
+        if no_meminit:
+            flags |= lmdb.MDB_NOMEMINIT
+
         rc = lmdb.mdb_env_open(self.env, path.encode(), flags, 0664)
         if rc:
             self.close()
@@ -182,23 +153,16 @@ cdef class LmdbEnvironment:
         _check_rc(rc)
 
     def copy2(self, path: str, compact: bool = False) -> None:
-        cdef unsigned int flags = 0
-        if compact:
-            flags |= lmdb.MDB_CP_COMPACT
+        cdef unsigned int flags = lmdb.MDB_CP_COMPACT if compact else 0
         rc = lmdb.mdb_env_copy2(self.env, path.encode(), flags)
         _check_rc(rc)
     
     def copy_fd2(self, fd: int, compact: bool = False) -> None:
-        cdef unsigned int flags = 0
-        if compact:
-            flags |= lmdb.MDB_CP_COMPACT
+        cdef unsigned int flags = lmdb.MDB_CP_COMPACT if compact else 0
         rc = lmdb.mdb_env_copyfd2(self.env, _fd_to_handle(fd), flags)
         _check_rc(rc)
 
     def get_stat(self) -> LmdbStat:
-        if self.env is NULL:
-            return LmdbStat(0, 0, 0, 0, 0, 0)
-
         cdef lmdb.MDB_stat stat
         rc = lmdb.mdb_env_stat(self.env, &stat)
         _check_rc(rc)
@@ -212,9 +176,6 @@ cdef class LmdbEnvironment:
         )
 
     def get_info(self) -> LmdbEnvInfo:
-        if self.env is NULL:
-            return LmdbEnvInfo(0, 0, 0, 0, 0)
-
         cdef lmdb.MDB_envinfo envinfo
         rc = lmdb.mdb_env_info(self.env, &envinfo)
         _check_rc(rc)
@@ -227,10 +188,7 @@ cdef class LmdbEnvironment:
         )
 
     def sync(self, force: bool) -> None:
-        cdef int _force = 0
-        if force:
-            _force = 1
-        rc = lmdb.mdb_env_sync(self.env, _force)
+        rc = lmdb.mdb_env_sync(self.env, 1 if force else 0)
         _check_rc(rc)
 
     def close(self) -> None:
@@ -240,36 +198,22 @@ cdef class LmdbEnvironment:
 
     def set_flags(
         self,
-        fixed_map: bool = False,
-        no_subdir: bool = False,
         no_sync: bool = False,
-        read_only: bool = False,
         no_meta_sync: bool = False,
-        write_map: bool = False,
         map_async: bool = False,
-        no_tls: bool = False,
-        no_lock: bool = False,
-        no_readahead: bool = False,
         no_meminit: bool = False,
         unset: bool = False,
     ) -> None:
-        cdef unsigned int flags = _env_flags_to_int(
-            fixed_map,
-            no_subdir,
-            no_sync,
-            read_only,
-            no_meta_sync,
-            write_map,
-            map_async,
-            no_tls,
-            no_lock,
-            no_readahead,
-            no_meminit,
-        )
-        cdef int onoff = 1
-        if unset:
-            onoff = 0
-
+        cdef unsigned int flags = 0
+        if no_sync:
+            flags |= lmdb.MDB_NOSYNC
+        if no_meta_sync:
+            flags |= lmdb.MDB_NOMETASYNC
+        if map_async:
+            flags |= lmdb.MDB_MAPASYNC
+        if no_meminit:
+            flags |= lmdb.MDB_NOMEMINIT
+        cdef int onoff = 0 if unset else 1
         rc = lmdb.mdb_env_set_flags(self.env, flags, onoff)
         _check_rc(rc)
 
@@ -329,9 +273,7 @@ cdef class LmdbTransaction:
 
     def __cinit__(self, env: LmdbEnvironment, read_only: bool = False):
         self.read_only = read_only
-        cdef unsigned int flags = 0
-        if read_only:
-            flags |= lmdb.MDB_RDONLY
+        cdef unsigned int flags = lmdb.MDB_RDONLY if read_only else 0
         rc = lmdb.mdb_txn_begin(env.env, NULL, flags, &self.txn)
         if rc:
             self.abort()
