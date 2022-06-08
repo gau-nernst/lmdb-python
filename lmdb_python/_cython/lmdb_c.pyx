@@ -62,9 +62,10 @@ cdef inline int _handle_to_fd(lmdb.mdb_filehandle_t handle):
 
 
 class LmdbException(Exception):
-    def __init__(self, rc: int):
+    def __init__(self, rc: Optional[int] = None, msg: Optional[str] = None):
         self.rc = rc
-        msg = f"{strerror(rc)}. Code {rc}"
+        if rc is not None:
+            msg = f"{strerror(rc)}. Code {rc}"
         super().__init__(msg)
 
 
@@ -76,7 +77,7 @@ def _check_rc(rc: int) -> None:
             raise ctypes.WinError(rc)
         ELSE:
             raise OSError(rc, os.strerror(rc))
-    raise LmdbException(rc)
+    raise LmdbException(rc=rc)
 
 
 cdef class LmdbEnvironment:
@@ -283,29 +284,29 @@ cdef class LmdbTransaction:
         return lmdb.mdb_txn_id(self.txn)
 
     def commit(self) -> None:
-        if self.txn is not NULL:
-            rc = lmdb.mdb_txn_commit(self.txn)
-            self.txn = NULL
-            _check_rc(rc)
+        if self.txn is NULL:
+            raise LmdbException(msg="Invalid transaction")
+        rc = lmdb.mdb_txn_commit(self.txn)
+        self.txn = NULL
+        _check_rc(rc)
 
     def abort(self) -> None:
-        if self.txn is not NULL:
-            lmdb.mdb_txn_abort(self.txn)
-            self.txn = NULL
+        lmdb.mdb_txn_abort(self.txn)
+        self.txn = NULL
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> None:
+        if self.txn is NULL:
+            return
         if self.read_only:
             self.abort()
         else:
             self.commit()
 
     def __dealloc__(self) -> None:
-        if self.txn is not NULL:
-            lmdb.mdb_txn_abort(self.txn)
-            self.txn = NULL
+        lmdb.mdb_txn_abort(self.txn)
 
 
 cdef lmdb.MDB_val _bytes_to_mv(bytes data):
