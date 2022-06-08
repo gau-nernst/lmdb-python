@@ -3,9 +3,11 @@ on:
   push:
     paths-ignore:
       - .github/**
+      - docs/**
       - README.md
       - .gitignore
       - .gitmodules
+      - update_index.py
 
 jobs:
   build:
