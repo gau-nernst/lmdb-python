@@ -1,13 +1,13 @@
 name: Build wheels
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       make_release:
         description: Publish a new release
         type: boolean
         default: false
+      tag:
+        description: Tag for the release
 
 jobs:
   build_wheels:
@@ -15,7 +15,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        platform_id:
+          - manylinux_x86_64
+          - manylinux_aarch64
+          - macosx_universal2
+          - win_amd64
+        python: ["37", "38", "39", "310"]
+        include:
+          # Linux
+          - os: ubuntu-latest
+            platform_id: manylinux_x86_64
+          - os: ubuntu-latest
+            platform_id: manylinux_aarch64
+          
+          # macOS
+          - os: macos-latest
+            platform_id: macosx_universal2
+          - os: macos-latest
+            python: "37"
+            platform_id: macosx_x86_64
+
+          # Windows
+          - os: windows-latest
+            platform_id: win_amd64
+        
+        exclude:
+          - platform_id: macosx_universal2
+            python: "37"
 
     steps:
       - name: Checkout
@@ -26,8 +52,8 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v3
 
-      - name: Set up QEMU on Linux
-        if: runner.os == 'Linux'
+      - name: Set up QEMU for manylinux_aarch64
+        if: matrix.platform_id == 'manylinux_aarch64'
         uses: docker/setup-qemu-action@v2
         with:
           platforms: arm64
@@ -46,23 +72,35 @@ jobs:
         env:
           CIBW_BUILD_VERBOSITY: 1
 
-          # skip Python 3.6 and PyPy
-          CIBW_SKIP: cp36-* pp*
-
-          # only build universal2 on macOS
-          CIBW_ARCHS_MACOS: universal2
-          CIBW_TEST_SKIP: "*-macosx_universal2:arm64"
-
-          # only build 64-bit x86 on Windows
-          CIBW_ARCHS_WINDOWS: AMD64
-
-          # only build 64-bit x86 and ARM on Linux
-          CIBW_ARCHS_LINUX: x86_64 aarch64
+          CIBW_BUILD: cp${{ matrix.python }}-${{ matrix.platform_id }}
+          CIBW_ARCHS: all
 
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: pytest -v {project}/tests
+          CIBW_TEST_SKIP: "*-macosx_universal2:arm64"
         
-      - name: Save wheels
-        uses: actions/upload-artifact@v2
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
         with:
+          name: wheels
           path: ./wheelhouse/*.whl
+
+  publish_wheels:
+    name: Publish wheels
+    if: github.event.inputs.make_release == 'true'
+    needs: build_wheels
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: wheels
+          path: wheelhouse
+      - name: Create release
+        run: gh release create ${{ github.event.inputs.tag }} ./wheelhouse/*.whl --generate-notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

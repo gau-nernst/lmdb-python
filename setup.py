@@ -1,36 +1,34 @@
 import os
+import re
 from pathlib import Path
 
 from Cython.Build import cythonize
 from setuptools import Extension, setup
 
-LMDB_DIR = Path("openldap", "libraries", "liblmdb")
+IS_WINDOWS = os.name == "nt"
+CURRENT_DIR = Path("__file__").parent
+LMDB_DIR = CURRENT_DIR / "openldap" / "libraries" / "liblmdb"
+with open(Path(__file__).parent / "lmdb_python" / "version.py") as f:
+    VERSION = re.search(r"([\d.]+)", f.readline().rstrip()).group(1)
 
-extra_link_args = []
-if os.name == "nt":
-    extra_link_args.append("/DEFAULTLIB:advapi32.lib")
-
-sources = [
-    "lmdb_python/_cython/lmdb_c.pyx",
-    str(LMDB_DIR / "mdb.c"),
-    str(LMDB_DIR / "midl.c"),
-]
 ext = Extension(
     "lmdb_python._cython.lmdb_c",
-    sources,
+    sources=[
+        "lmdb_python/_cython/lmdb_c.pyx",
+        str(LMDB_DIR / "mdb.c"),
+        str(LMDB_DIR / "midl.c"),
+    ],
     include_dirs=[str(LMDB_DIR)],
-    extra_link_args=extra_link_args,
+    extra_link_args=["/DEFAULTLIB:advapi32.lib"] if IS_WINDOWS else [],
 )
-extensions = [ext]
-
 compiler_directives = {"language_level": 3, "embedsignature": True}
 
 setup(
     name="lmdb-python",
-    version="0.0.1",
+    version=VERSION,
     description="A Python binding for LMDB",
     author="Thien Tran",
     url="https://github.com/gau-nernst/lmdb-python",
-    ext_modules=cythonize(extensions, compiler_directives=compiler_directives),
+    ext_modules=cythonize([ext], compiler_directives=compiler_directives),
     packages=["lmdb_python"],
 )

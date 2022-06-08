@@ -76,7 +76,10 @@ def test_get_multithreading(
     tmp_path: Path, db_with_data_100: Database, keys_100: List[bytes]
 ):
     def create_worker(keys: List[bytes], tmp_path: Path):
-        flags = LmdbEnvFlags(read_only=True)
+        # without setting no_lock = True,
+        # this test will occasionally fail with MDB_BAD_RSLOT error
+        # https://github.com/ThoughtRiver/lmdb-embeddings/issues/8
+        flags = LmdbEnvFlags(read_only=True, no_lock=True)
         db_thread = Database(str(tmp_path), flags=flags)
         for k in keys:
             db_thread.get(k)

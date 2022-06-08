@@ -12,10 +12,25 @@ This repo serves as a practice for me to learn how to use 3rd-party C/C++ librar
 
 From wheels: To be provided
 
-From source: Clone recursively and install the repo directly
+Pre-built wheels matrix
+
+Python version | Linux (x86_64 and aarch64) | macOS (universal2) | Windows (x86_64 only)
+--|--|--|--
+3.7 | ✅ | ✅ (x86_64 only) | ✅ 
+3.8 | ✅ | ✅ | ✅
+3.9 | ✅ | ✅ | ✅
+3.10 | ✅ | ✅ | ✅
+
+From source: Install directly from this GitHub repo
 
 ```bash
-git clone --recursive https://github.com/gau-nernst/lmdb-python
+pip install git+https://github.com/gau-nernst/lmdb-python.git
+```
+
+Alternatively, you can clone the repo locally and install from the local clone (remember to clone recursively to get OpenLDAP LMDB C source)
+
+```bash
+git clone --recursive https://github.com/gau-nernst/lmdb-python.git
 cd lmdb-python
 pip install .
 ```
