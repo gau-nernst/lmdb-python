@@ -23,15 +23,14 @@ class Database:
         self.env = LmdbEnvironment(path, map_size, max_readers, max_dbs, *flags)
         with LmdbTransaction(self.env, read_only=flags.read_only) as txn:
             self.dbi = LmdbDatabase(txn)
-        self.path = path
-        self.map_size = map_size
-        self.max_readers = max_readers
-        self.max_dbs = max_dbs
-        self.flags = flags
 
-    def __reduce__(self):
-        attrs = (self.path, self.map_size, self.max_readers, self.max_dbs, self.flags)
-        return (self.__class__, attrs)
+    def __getstate__(self) -> LmdbEnvironment:
+        return self.env
+
+    def __setstate__(self, state: LmdbEnvironment):
+        self.env = state
+        with LmdbTransaction(self.env, read_only=self.env.get_flags().read_only) as txn:
+            self.dbi = LmdbDatabase(txn)
 
     def get(self, key: bytes) -> bytes:
         with LmdbTransaction(self.env, read_only=True) as txn:

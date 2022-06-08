@@ -82,6 +82,7 @@ def _check_rc(rc: int) -> None:
 
 cdef class LmdbEnvironment:
     cdef lmdb.MDB_env* env
+    max_dbs: int
 
     def __cinit__(
         self,
@@ -107,14 +108,10 @@ cdef class LmdbEnvironment:
             _check_rc(rc)
 
         self.set_map_size(map_size)
-
-        # This function may only be called after
-        # mdb_env_create() and before mdb_env_open()
-        rc = lmdb.mdb_env_set_maxreaders(self.env, max_readers)
-        _check_rc(rc)
+        self.set_max_readers(max_readers)
+        self.max_dbs = max_dbs
         if max_dbs > 0:
-            rc = lmdb.mdb_env_set_maxdbs(self.env, max_dbs)
-            _check_rc(rc)
+            self.set_max_dbs(max_dbs)
 
         cdef unsigned int flags = 0
         if fixed_map:
@@ -144,6 +141,16 @@ cdef class LmdbEnvironment:
         if rc:
             self.close()
             _check_rc(rc)
+
+    def __reduce__(self):
+        args = (
+            self.get_path(),
+            self.get_info().me_mapsize,
+            self.get_max_readers(),
+            self.max_dbs,
+            *self.get_flags(),
+        )
+        return (self.__class__, args)
 
     def copy(self, path: str) -> None:
         rc = lmdb.mdb_env_copy(self.env, path.encode())
@@ -253,11 +260,21 @@ cdef class LmdbEnvironment:
         rc = lmdb.mdb_env_set_mapsize(self.env, size)
         _check_rc(rc)
 
+    # this function can only be called after mdb_env_create() and before mdb_env_open()
+    cdef void set_max_readers(self, unsigned int max_readers):
+        rc = lmdb.mdb_env_set_maxreaders(self.env, max_readers)
+        _check_rc(rc)
+
     def get_max_readers(self) -> int:
         cdef unsigned int readers
         rc = lmdb.mdb_env_get_maxreaders(self.env, &readers)
         _check_rc(rc)
         return readers
+
+    # this function can only be called after mdb_env_create() and before mdb_env_open()
+    cdef void set_max_dbs(self, lmdb.MDB_dbi max_dbs):
+        rc = lmdb.mdb_env_set_maxdbs(self.env, max_dbs)
+        _check_rc(rc)
 
     def get_max_key_size(self) -> int:
         return lmdb.mdb_env_get_maxkeysize(self.env)

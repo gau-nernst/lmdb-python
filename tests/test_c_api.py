@@ -3,11 +3,11 @@ import pickle
 import threading
 import time
 from pathlib import Path
-from typing import Any, Callable, Iterable, Tuple
+from typing import Callable, Iterable, Tuple
 
 import lmdb_python.types
 import pytest
-from lmdb_python._cython import lmdb_c
+from lmdb_python import lmdb_c
 
 lmdb_error_codes = [
     lmdb_c.MDB_KEYEXIST,
@@ -166,6 +166,15 @@ def test_env_init_max_readers(tmp_path: Path, max_readers: int):
         th.start()
     for th in threads:
         th.join()
+
+
+def test_env_pickle(lmdb_env: lmdb_c.LmdbEnvironment):
+    pickled_data = pickle.dumps(lmdb_env)
+    unpickled_env: lmdb_c.LmdbEnvironment = pickle.loads(pickled_data)
+    assert unpickled_env is not lmdb_env
+    assert unpickled_env.get_path() == lmdb_env.get_path()
+    assert unpickled_env.get_info() == lmdb_env.get_info()
+    assert unpickled_env.get_stat() == lmdb_env.get_stat()
 
 
 def test_txn_init(lmdb_env: lmdb_c.LmdbEnvironment):
