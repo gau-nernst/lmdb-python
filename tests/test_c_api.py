@@ -3,11 +3,11 @@ import pickle
 import threading
 import time
 from pathlib import Path
-from typing import Any, Callable, Iterable, Tuple
+from typing import Callable, Iterable, Tuple
 
 import lmdb_python.types
 import pytest
-from lmdb_python._cython import lmdb_c
+from lmdb_python import lmdb_c
 
 lmdb_error_codes = [
     lmdb_c.MDB_KEYEXIST,
@@ -117,7 +117,7 @@ def test_env_get_fd(lmdb_env: lmdb_c.LmdbEnvironment):
 
 
 @pytest.mark.parametrize("map_size_mb", (10, 100, 1000))
-def test_env_set_map_size(lmdb_env: lmdb_c.LmdbEnvironment, map_size_mb):
+def test_env_set_map_size(lmdb_env: lmdb_c.LmdbEnvironment, map_size_mb: int):
     new_map_size = map_size_mb * 1024 * 1024
     lmdb_env.set_map_size(new_map_size)
     info = lmdb_env.get_info()
@@ -166,6 +166,15 @@ def test_env_init_max_readers(tmp_path: Path, max_readers: int):
         th.start()
     for th in threads:
         th.join()
+
+
+def test_env_pickle(lmdb_env: lmdb_c.LmdbEnvironment):
+    pickled_data = pickle.dumps(lmdb_env)
+    unpickled_env: lmdb_c.LmdbEnvironment = pickle.loads(pickled_data)
+    assert unpickled_env is not lmdb_env
+    assert unpickled_env.get_path() == lmdb_env.get_path()
+    assert unpickled_env.get_info() == lmdb_env.get_info()
+    assert unpickled_env.get_stat() == lmdb_env.get_stat()
 
 
 def test_txn_init(lmdb_env: lmdb_c.LmdbEnvironment):
@@ -238,29 +247,9 @@ def test_env_init_max_dbs(tmp_path: Path, max_dbs: int):
     txn.commit()
 
 
-def test_data_empty():
-    lmdb_data = lmdb_c._LmdbData()
-    assert lmdb_data.to_bytes() is None
-
-
-_bytes_samples = (b"123", b"a quick brown fox", "hello".encode("utf-8"))
-_non_bytes_samples = ("a string", 100, list())
-
 _key_samples = (b"key123", "u1234532".encode("utf-8"))
 _value_samples = (b"value456", pickle.dumps(["1", 12, "Engineer"]))
 _key_value_samples = tuple(zip(_key_samples, _value_samples))
-
-
-@pytest.mark.parametrize("data", _bytes_samples)
-def test_data(data: bytes):
-    lmdb_data = lmdb_c._LmdbData(data)
-    assert lmdb_data.to_bytes() == data
-
-
-@pytest.mark.parametrize("data", _non_bytes_samples)
-def test_data_type_error(data: Any):
-    with pytest.raises(TypeError):
-        lmdb_c._LmdbData(data)
 
 
 @pytest.mark.parametrize("key,value", _key_value_samples)
