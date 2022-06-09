@@ -117,7 +117,7 @@ def test_env_get_fd(lmdb_env: lmdb_c.LmdbEnvironment):
 
 
 @pytest.mark.parametrize("map_size_mb", (10, 100, 1000))
-def test_env_set_map_size(lmdb_env: lmdb_c.LmdbEnvironment, map_size_mb):
+def test_env_set_map_size(lmdb_env: lmdb_c.LmdbEnvironment, map_size_mb: int):
     new_map_size = map_size_mb * 1024 * 1024
     lmdb_env.set_map_size(new_map_size)
     info = lmdb_env.get_info()
