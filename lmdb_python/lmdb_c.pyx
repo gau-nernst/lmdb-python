@@ -108,10 +108,10 @@ cdef class LmdbEnvironment:
             _check_rc(rc)
 
         self.set_map_size(map_size)
-        self.set_max_readers(max_readers)
+        self._set_max_readers(max_readers)
         self.max_dbs = max_dbs
         if max_dbs > 0:
-            self.set_max_dbs(max_dbs)
+            self._set_max_dbs(max_dbs)
 
         cdef unsigned int flags = 0
         if fixed_map:
@@ -247,8 +247,7 @@ cdef class LmdbEnvironment:
         cdef char* path
         rc = lmdb.mdb_env_get_path(self.env, &path)
         _check_rc(rc)
-        py_path = path
-        return py_path.decode()
+        return path.decode()
     
     def get_fd(self) -> int:
         cdef lmdb.mdb_filehandle_t fd
@@ -261,7 +260,7 @@ cdef class LmdbEnvironment:
         _check_rc(rc)
 
     # this function can only be called after mdb_env_create() and before mdb_env_open()
-    cdef void set_max_readers(self, unsigned int max_readers):
+    def _set_max_readers(self, max_readers: int) -> None:
         rc = lmdb.mdb_env_set_maxreaders(self.env, max_readers)
         _check_rc(rc)
 
@@ -272,7 +271,7 @@ cdef class LmdbEnvironment:
         return readers
 
     # this function can only be called after mdb_env_create() and before mdb_env_open()
-    cdef void set_max_dbs(self, lmdb.MDB_dbi max_dbs):
+    def _set_max_dbs(self, max_dbs: int) -> None:
         rc = lmdb.mdb_env_set_maxdbs(self.env, max_dbs)
         _check_rc(rc)
 
