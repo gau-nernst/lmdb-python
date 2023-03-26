@@ -8,7 +8,7 @@ from setuptools import Extension, setup
 IS_WINDOWS = os.name == "nt"
 CURRENT_DIR = Path("__file__").parent
 LMDB_DIR = CURRENT_DIR / "openldap" / "libraries" / "liblmdb"
-with open(Path(__file__).parent / "lmdb_python" / "version.py") as f:
+with open(CURRENT_DIR / "lmdb_python" / "version.py") as f:
     VERSION = re.search(r"([\d.]+)", f.readline().rstrip()).group(1)
 
 ext = Extension(

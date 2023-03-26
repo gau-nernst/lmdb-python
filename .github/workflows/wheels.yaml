@@ -20,7 +20,7 @@ jobs:
           - manylinux_aarch64
           - macosx_universal2
           - win_amd64
-        python: ["37", "38", "39", "310"]
+        python: ["37", "38", "39", "310", "311"]
         include:
           # Linux
           - os: ubuntu-latest
