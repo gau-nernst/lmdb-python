@@ -24,6 +24,7 @@ Python version | Linux | macOS | Windows
 3.8 | ✅ | ✅ | ✅
 3.9 | ✅ | ✅ | ✅
 3.10 | ✅ | ✅ | ✅
+3.11 | ✅ | ✅ | ✅
 
 OS | Platform
 ---|---------
@@ -56,7 +57,7 @@ If you want to build against a specific version of LMDB, checkout the correspond
 ```bash
 # assume you are inside 'lmdb-python' directory now
 cd openldap
-git checkout LMDB_0.9.29
+git checkout LMDB_0.9.30
 cd ..
 pip install .
 ```
