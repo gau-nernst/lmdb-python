@@ -18,19 +18,13 @@ pip install lmdb-python -f https://gau-nernst.github.io/lmdb-python/
 
 The following pre-built wheels are provided (64-bit only)
 
-Python version | Linux | macOS | Windows
---|--|--|--
-3.7 | ✅ | ✅ | ✅ 
-3.8 | ✅ | ✅ | ✅
-3.9 | ✅ | ✅ | ✅
-3.10 | ✅ | ✅ | ✅
-3.11 | ✅ | ✅ | ✅
+Platform | Architecture
+---------|---------
+Linux | manylinux: x86_64 and aarch64; musllinux: x86_64
+macOS | x86_64 (Intel) and arm64 (Apple Silicon)
+Windows | AMD64, x86, and ARM64
 
-OS | Platform
----|---------
-Linux | x86_64 and aarch64 (manylinux2014 only, musllinux is not available)
-macOS | universal2 (supports both Intel Mac and Apple Silicon Mac), except Python 3.7, where only Intel Mac is supported
-Windows | x86_64 only
+Supported Python versions depend on [cibuildwheel](https://cibuildwheel.readthedocs.io/en/stable/options/#build-skip). macOS arm64 is Python 3.8+, Windows ARM64 is Python 3.9+, and the rest are Python 3.6+.
 
 From source: Install directly from this GitHub repo
 
@@ -46,20 +40,12 @@ cd lmdb-python
 pip install .
 ```
 
-On macOS, you might need to set some environment variables to use `clang` compiler
-
-```bash
-CC=clang CXX=clang++ pip install .
-```
-
 If you want to build against a specific version of LMDB, checkout the corresponding tag in the `openldap` submodule before installing the package
 
 ```bash
 # assume you are inside 'lmdb-python' directory now
 cd openldap
 git checkout LMDB_0.9.30
-cd ..
-pip install .
 ```
 
 ## Usage
