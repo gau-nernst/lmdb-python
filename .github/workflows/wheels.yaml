@@ -10,20 +10,21 @@ on:
         description: Tag for the release
 
 jobs:
-  build_wheels:
-    runs-on: ${{ matrix.os }}
+  linux:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        arch: [x86_64, aarch64]
+        platform: [manylinux, musllinux]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           submodules: recursive
 
-      - name: Set up QEMU for manylinux_aarch64
-        if: matrix.os == 'ubuntu-latest'
+      - name: Set up QEMU for aarch64
+        if: matrix.arch == 'aarch64'
         uses: docker/setup-qemu-action@v2
         with:
           platforms: arm64
@@ -32,11 +33,36 @@ jobs:
         uses: pypa/cibuildwheel@v2.12.1
         env:
           CIBW_BUILD_VERBOSITY: 1
-          CIBW_BUILD: cp*-*
+          CIBW_BUILD: cp*-${{ matrix.platform }}*
+          CIBW_ARCHS_LINUX: ${{ matrix.arch }}
 
-          CIBW_ARCHS_LINUX: x86_64 aarch64
-          CIBW_ARCHS_MACOS: x86_64 arm64
-          CIBW_ARCHS_WINDOWS: AMD64
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: pytest -v {project}/tests
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: ./wheelhouse/*.whl
+
+  macos:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.12.1
+        env:
+          CIBW_BUILD_VERBOSITY: 1
+          CIBW_BUILD: cp*-*
+          CIBW_ARCHS_MACOS: ${{ matrix.arch }}
 
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: pytest -v {project}/tests
@@ -48,16 +74,35 @@ jobs:
           name: wheels
           path: ./wheelhouse/*.whl
 
-  publish_wheels:
-    name: Publish wheels
-    if: github.event.inputs.make_release == 'true'
-    needs: build_wheels
-    runs-on: ubuntu-latest
+  windows:
+    runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           submodules: recursive
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.12.1
+        env:
+          CIBW_BUILD_VERBOSITY: 1
+          CIBW_BUILD: cp*-*
+
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: pytest -v {project}/tests
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: wheels
+          path: ./wheelhouse/*.whl
+
+  publish_wheels:
+    name: Publish wheels
+    if: github.event.inputs.make_release == 'true'
+    needs: [linux, macos, windows]
+    runs-on: ubuntu-latest
+    steps:
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
