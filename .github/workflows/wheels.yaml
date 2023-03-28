@@ -15,64 +15,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform_id:
-          - manylinux_x86_64
-          - manylinux_aarch64
-          - macosx_universal2
-          - win_amd64
-        python: ["37", "38", "39", "310", "311"]
-        include:
-          # Linux
-          - os: ubuntu-latest
-            platform_id: manylinux_x86_64
-          - os: ubuntu-latest
-            platform_id: manylinux_aarch64
-          
-          # macOS
-          - os: macos-latest
-            platform_id: macosx_universal2
-          - os: macos-latest
-            python: "37"
-            platform_id: macosx_x86_64
-
-          # Windows
-          - os: windows-latest
-            platform_id: win_amd64
-        
-        exclude:
-          - platform_id: macosx_universal2
-            python: "37"
-
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           submodules: recursive
-      
-      - name: Setup Python
-        uses: actions/setup-python@v3
 
       - name: Set up QEMU for manylinux_aarch64
-        if: matrix.platform_id == 'manylinux_aarch64'
+        if: matrix.os == 'ubuntu-latest'
         uses: docker/setup-qemu-action@v2
         with:
           platforms: arm64
 
-      - name: Install cibuildwheel
-        run: pip install cibuildwheel
-
       - name: Build wheels
-        run: python -m cibuildwheel --output-dir wheelhouse
+        uses: pypa/cibuildwheel@v2.12.1
         env:
           CIBW_BUILD_VERBOSITY: 1
+          CIBW_BUILD: cp*-*
 
-          CIBW_BUILD: cp${{ matrix.python }}-${{ matrix.platform_id }}
-          CIBW_ARCHS: all
+          CIBW_ARCHS_LINUX: x86_64 aarch64
+          CIBW_ARCHS_MACOS: x86_64 arm64
+          CIBW_ARCHS_WINDOWS: AMD64
 
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: pytest -v {project}/tests
-          CIBW_TEST_SKIP: "*-macosx_universal2:arm64"
-        
+          CIBW_TEST_SKIP: "*-macosx_arm64"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
