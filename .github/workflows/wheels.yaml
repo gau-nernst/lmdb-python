@@ -115,6 +115,9 @@ jobs:
     needs: [linux, macos, windows]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
       - name: Download artifacts
         uses: actions/download-artifact@v3
         with:
@@ -125,9 +128,6 @@ jobs:
         run: gh release create ${{ github.event.inputs.tag }} ./wheelhouse/*.whl --generate-notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Checkout
-        uses: actions/checkout@v3
 
       - name: Setup Python
         uses: actions/setup-python@v3
