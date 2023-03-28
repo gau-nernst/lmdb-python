@@ -80,7 +80,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [AMD64, ARM64]
+        arch: [AMD64, x86, ARM64]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
