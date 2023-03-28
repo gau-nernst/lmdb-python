@@ -59,13 +59,7 @@ jobs:
           platforms: arm64
 
       - name: Install cibuildwheel
-        run: python -m pip install cibuildwheel
-
-      - name: Set compiler to clang on macOS
-        if: runner.os == 'macOS'
-        run: |
-          echo "CC=/usr/bin/clang" >> $GITHUB_ENV
-          echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
+        run: pip install cibuildwheel
 
       - name: Build wheels
         run: python -m cibuildwheel --output-dir wheelhouse
