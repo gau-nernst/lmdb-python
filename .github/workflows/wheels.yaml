@@ -1,5 +1,8 @@
 name: Build wheels
 on:
+  push:
+    paths:
+      - .github/workflows/wheels.yaml
   workflow_dispatch:
     inputs:
       make_release:
