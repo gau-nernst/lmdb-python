@@ -2,6 +2,7 @@ name: Build and Test
 on:
   push:
     paths-ignore:
+      - .github/workflows/wheels.yaml
       - docs/**
       - README.md
       - .gitignore
