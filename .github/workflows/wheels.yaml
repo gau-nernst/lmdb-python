@@ -35,7 +35,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.12.1
         env:
-          CFLAGS: -g0  # remove debug symbols
+          CIBW_ENVIRONMENT_LINUX: CFLAGS='-g0'  # remove debug symbols
           CIBW_BUILD_VERBOSITY: 1
           CIBW_BUILD: cp*-${{ matrix.platform }}*
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
