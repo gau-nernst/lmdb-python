@@ -35,7 +35,7 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.12.1
         env:
-          CIBW_BEFORE_BUILD: mount | column -t
+          CIBW_BEFORE_BUILD: df /tmp
 
           CIBW_BUILD_VERBOSITY: 1
           CIBW_BUILD: cp*-${{ matrix.platform }}*
