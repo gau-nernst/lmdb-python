@@ -20,6 +20,9 @@ jobs:
       matrix:
         platform: [manylinux, musllinux]
         arch: [x86_64, aarch64]
+      exclude:
+        - platform: musllinux  # flock() is not available on GHA for this combination
+          arch: aarch64
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -35,14 +38,12 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.12.1
         env:
-          CIBW_BEFORE_BUILD: make -C {project}/openldap/libraries/liblmdb test
-
           CIBW_BUILD_VERBOSITY: 1
           CIBW_BUILD: cp*-${{ matrix.platform }}*
           CIBW_ARCHS_LINUX: ${{ matrix.arch }}
 
           CIBW_TEST_REQUIRES: pytest
-          CIBW_TEST_COMMAND: pytest -v {project}/tests --basetemp=temp
+          CIBW_TEST_COMMAND: pytest -v {project}/tests
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
