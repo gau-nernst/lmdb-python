@@ -41,7 +41,7 @@ jobs:
           echo "CXX=/usr/bin/clang++" >> $GITHUB_ENV
 
       - name: Build
-        run: python setup.py build_ext --inplace
+        run: pip install -v .
 
       - name: Run tests
-        run: python -m pytest tests -v
+        run: pytest tests -v
