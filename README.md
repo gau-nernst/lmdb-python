@@ -20,11 +20,17 @@ The following pre-built wheels are provided (64-bit only)
 
 Platform | Architecture
 ---------|---------
-Linux | manylinux: x86_64 and aarch64; musllinux: x86_64
+Linux | manylinux: x86_64 and aarch64; musllinux: x86_64 and aarch64
 macOS | x86_64 (Intel) and arm64 (Apple Silicon)
 Windows | AMD64, x86, and ARM64
 
 Supported Python versions depend on [cibuildwheel](https://cibuildwheel.readthedocs.io/en/stable/options/#build-skip). macOS arm64 is Python 3.8+, Windows ARM64 is Python 3.9+, and the rest are Python 3.6+.
+
+Due to GHA runners' limitations, the following wheels are not tested, thus not guaranteed to work:
+
+- musllinux_aarch64
+- macosx_arm64
+- win_arm64
 
 From source: Install directly from this GitHub repo
 
