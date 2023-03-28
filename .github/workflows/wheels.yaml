@@ -56,6 +56,9 @@ jobs:
       fail-fast: false
       matrix:
         arch: [x86_64, arm64]
+    env:
+      CC: clang
+      CXX: clang++
     steps:
       - name: Checkout
         uses: actions/checkout@v3
