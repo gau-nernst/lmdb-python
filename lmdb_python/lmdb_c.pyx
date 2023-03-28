@@ -244,7 +244,7 @@ cdef class LmdbEnvironment:
         )
 
     def get_path(self) -> str:
-        cdef char* path
+        cdef const char* path = NULL
         rc = lmdb.mdb_env_get_path(self.env, &path)
         _check_rc(rc)
         return path.decode()
